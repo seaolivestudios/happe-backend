@@ -3,34 +3,33 @@ const fastify = require('fastify')({ logger: true });
 const cors = require('@fastify/cors');
 const jwt = require('@fastify/jwt');
 const bcrypt = require('bcrypt');
-const { pool, initDB } = require('./database');
+const { Pool } = require('pg');
 
-fastify.register(cors, {
-  origin: true,
-  credentials: true,
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
 });
 
+fastify.register(cors, { origin: true, credentials: true });
 fastify.register(jwt, {
-  secret: process.env.JWT_SECRET || 'happe-secret-key-change-in-production',
+  secret: process.env.JWT_SECRET || 'happe-secret-key',
 });
 
-fastify.get('/', async (request, reply) => {
-  return {
-    status: 'ok',
-    message: 'Happ-E API is running',
-    version: '1.0.0'
-  };
-});
+fastify.get('/', async () => ({
+  status: 'ok',
+  message: 'Happ-E API is running',
+  version: '1.0.0'
+}));
 
 fastify.post('/auth/register', async (request, reply) => {
   const { name, email, password } = request.body;
   if (!name || !email || !password) {
-    return reply.status(400).send({ error: 'Name, email and password are required' });
+    return reply.status(400).send({ error: 'All fields required' });
   }
   try {
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (existing.rows.length > 0) {
-      return reply.status(400).send({ error: 'An account with this email already exists' });
+      return reply.status(400).send({ error: 'Email already registered' });
     }
     const passwordHash = await bcrypt.hash(password, 10);
     const handle = '@' + name.toLowerCase().replace(/\s/g, '') + Math.floor(Math.random() * 999);
@@ -43,34 +42,30 @@ fastify.post('/auth/register', async (request, reply) => {
     return { success: true, token, user };
   } catch (err) {
     fastify.log.error(err);
-    return reply.status(500).send({ error: 'Server error. Please try again.' });
+    return reply.status(500).send({ error: 'Server error' });
   }
 });
 
 fastify.post('/auth/login', async (request, reply) => {
   const { email, password } = request.body;
   if (!email || !password) {
-    return reply.status(400).send({ error: 'Email and password are required' });
+    return reply.status(400).send({ error: 'Email and password required' });
   }
   try {
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (result.rows.length === 0) {
-      return reply.status(401).send({ error: 'No account found with this email' });
+      return reply.status(401).send({ error: 'No account found' });
     }
     const user = result.rows[0];
-    const validPassword = await bcrypt.compare(password, user.password_hash);
-    if (!validPassword) {
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) {
       return reply.status(401).send({ error: 'Incorrect password' });
     }
     const token = fastify.jwt.sign({ id: user.id, email: user.email, handle: user.handle });
-    return {
-      success: true,
-      token,
-      user: { id: user.id, name: user.name, email: user.email, handle: user.handle }
-    };
+    return { success: true, token, user: { id: user.id, name: user.name, email: user.email, handle: user.handle } };
   } catch (err) {
     fastify.log.error(err);
-    return reply.status(500).send({ error: 'Server error. Please try again.' });
+    return reply.status(500).send({ error: 'Server error' });
   }
 });
 
@@ -122,6 +117,47 @@ fastify.post('/posts/:id/comment', async (request, reply) => {
     return reply.status(401).send({ error: 'Unauthorized' });
   }
 });
+
+const initDB = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      handle VARCHAR(100) UNIQUE NOT NULL,
+      bio TEXT DEFAULT '',
+      category VARCHAR(100) DEFAULT '',
+      verified BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS posts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      type VARCHAR(20) NOT NULL,
+      text TEXT,
+      image_url TEXT,
+      video_url TEXT,
+      widescreen BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS smiles (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      post_id INTEGER REFERENCES posts(id),
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, post_id)
+    );
+    CREATE TABLE IF NOT EXISTS comments (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      post_id INTEGER REFERENCES posts(id),
+      text TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('Database ready');
+};
 
 const start = async () => {
   try {
