@@ -80,7 +80,20 @@ fastify.post('/auth/login', async (request, reply) => {
     return reply.status(500).send({ error: 'Server error' });
   }
 });
-
+fastify.post('/posts', async (request, reply) => {
+  const { type, text, image_url, video_url, widescreen, author } = request.body;
+  try {
+    await request.jwtVerify();
+    const result = await pool.query(
+      'INSERT INTO posts (user_id, type, text, image_url, video_url, widescreen, author_quote) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [request.user.id, type, text, image_url, video_url, widescreen, author]
+    );
+    return { success: true, post: result.rows[0] };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+});
 fastify.get('/posts', async (request, reply) => {
   try {
     const result = await pool.query(`
