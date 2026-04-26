@@ -1,4 +1,7 @@
-require('dotenv').config();
+// dotenv only needed locally
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 const fastify = require('fastify')({ logger: true });
 const cors = require('@fastify/cors');
 const jwt = require('@fastify/jwt');
