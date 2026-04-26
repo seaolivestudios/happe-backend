@@ -1,7 +1,7 @@
-// dotenv only needed locally
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
+
 const fastify = require('fastify')({ logger: true });
 const cors = require('@fastify/cors');
 const jwt = require('@fastify/jwt');
@@ -10,7 +10,7 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  ssl: { rejectUnauthorized: false },
 });
 
 fastify.register(cors, { origin: true, credentials: true });
@@ -164,25 +164,14 @@ const initDB = async () => {
 
 const start = async () => {
   try {
+    console.log('Starting Happ-E server...');
     await initDB();
     await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
     console.log('Happ-E server running');
   } catch (err) {
-    fastify.log.error(err);
+    console.error('STARTUP ERROR:', err);
     process.exit(1);
   }
 };
 
-start(); const start = async () => {
-  try {
-    console.log('Connecting to database...');
-    await initDB();
-    console.log('Database connected successfully');
-    await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
-    console.log('Happ-E server running');
-  } catch (err) {
-    console.error('STARTUP ERROR:', err.message);
-    console.error(err);
-    process.exit(1);
-  }
-};
+start();
