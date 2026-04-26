@@ -8,10 +8,17 @@ const jwt = require('@fastify/jwt');
 const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 
-console.log('DATABASE_URL starts with:', process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 30) : 'NOT SET');
+console.log('PGHOST:', process.env.PGHOST || 'NOT SET');
+console.log('PGPORT:', process.env.PGPORT || 'NOT SET');
+console.log('PGUSER:', process.env.PGUSER || 'NOT SET');
+console.log('PGDATABASE:', process.env.PGDATABASE || 'NOT SET');
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  host: process.env.PGHOST,
+  port: parseInt(process.env.PGPORT || '5432'),
+  user: process.env.PGUSER,
+  password: process.env.PGPASSWORD,
+  database: process.env.PGDATABASE,
   ssl: { rejectUnauthorized: false },
 });
 
