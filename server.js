@@ -14,7 +14,6 @@ fastify.register(jwt, {
   secret: process.env.JWT_SECRET || 'happe-secret-key-change-in-production',
 });
 
-// Health check
 fastify.get('/', async (request, reply) => {
   return {
     status: 'ok',
@@ -23,7 +22,6 @@ fastify.get('/', async (request, reply) => {
   };
 });
 
-// Register
 fastify.post('/auth/register', async (request, reply) => {
   const { name, email, password } = request.body;
   if (!name || !email || !password) {
@@ -49,7 +47,6 @@ fastify.post('/auth/register', async (request, reply) => {
   }
 });
 
-// Login
 fastify.post('/auth/login', async (request, reply) => {
   const { email, password } = request.body;
   if (!email || !password) {
@@ -77,7 +74,6 @@ fastify.post('/auth/login', async (request, reply) => {
   }
 });
 
-// Get posts
 fastify.get('/posts', async (request, reply) => {
   try {
     const result = await pool.query(`
@@ -98,7 +94,6 @@ fastify.get('/posts', async (request, reply) => {
   }
 });
 
-// Smile a post
 fastify.post('/posts/:id/smile', async (request, reply) => {
   const { id } = request.params;
   try {
@@ -113,7 +108,6 @@ fastify.post('/posts/:id/smile', async (request, reply) => {
   }
 });
 
-// Comment on a post
 fastify.post('/posts/:id/comment', async (request, reply) => {
   const { id } = request.params;
   const { text } = request.body;
@@ -123,4 +117,21 @@ fastify.post('/posts/:id/comment', async (request, reply) => {
       'INSERT INTO comments (user_id, post_id, text) VALUES ($1, $2, $3) RETURNING *',
       [request.user.id, id, text]
     );
-    return { success: true, comment: result.rows[0]
+    return { success: true, comment: result.rows[0] };
+  } catch (err) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+});
+
+const start = async () => {
+  try {
+    await initDB();
+    await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
+    console.log('Happ-E server running');
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();
