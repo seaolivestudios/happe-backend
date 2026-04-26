@@ -170,4 +170,16 @@ const start = async () => {
   }
 };
 
-start();
+start(); const start = async () => {
+  try {
+    console.log('Connecting to database...');
+    await initDB();
+    console.log('Database connected successfully');
+    await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
+    console.log('Happ-E server running');
+  } catch (err) {
+    console.error('STARTUP ERROR:', err.message);
+    console.error(err);
+    process.exit(1);
+  }
+};
