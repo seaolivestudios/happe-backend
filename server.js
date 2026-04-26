@@ -2,8 +2,9 @@ require('dotenv').config();
 const fastify = require('fastify')({ logger: true });
 const cors = require('@fastify/cors');
 const jwt = require('@fastify/jwt');
+const bcrypt = require('bcrypt');
+const { pool, initDB } = require('./database');
 
-// Register plugins
 fastify.register(cors, {
   origin: true,
   credentials: true,
@@ -13,73 +14,113 @@ fastify.register(jwt, {
   secret: process.env.JWT_SECRET || 'happe-secret-key-change-in-production',
 });
 
-// Health check route
+// Health check
 fastify.get('/', async (request, reply) => {
-  return { 
-    status: 'ok', 
+  return {
+    status: 'ok',
     message: 'Happ-E API is running',
     version: '1.0.0'
   };
 });
 
-// Auth routes
+// Register
 fastify.post('/auth/register', async (request, reply) => {
   const { name, email, password } = request.body;
   if (!name || !email || !password) {
     return reply.status(400).send({ error: 'Name, email and password are required' });
   }
-  const token = fastify.jwt.sign({ email, name });
-  return { 
-    success: true, 
-    token,
-    user: { name, email, handle: '@' + name.toLowerCase().replace(/\s/g, '') }
-  };
+  try {
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return reply.status(400).send({ error: 'An account with this email already exists' });
+    }
+    const passwordHash = await bcrypt.hash(password, 10);
+    const handle = '@' + name.toLowerCase().replace(/\s/g, '') + Math.floor(Math.random() * 999);
+    const result = await pool.query(
+      'INSERT INTO users (name, email, password_hash, handle) VALUES ($1, $2, $3, $4) RETURNING id, name, email, handle',
+      [name, email, passwordHash, handle]
+    );
+    const user = result.rows[0];
+    const token = fastify.jwt.sign({ id: user.id, email: user.email, handle: user.handle });
+    return { success: true, token, user };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Server error. Please try again.' });
+  }
 });
 
+// Login
 fastify.post('/auth/login', async (request, reply) => {
   const { email, password } = request.body;
   if (!email || !password) {
     return reply.status(400).send({ error: 'Email and password are required' });
   }
-  const token = fastify.jwt.sign({ email });
-  return { 
-    success: true, 
-    token,
-    user: { email, name: 'Stephen', handle: '@stephen' }
-  };
-});
-
-// Posts routes
-fastify.get('/posts', async (request, reply) => {
-  return {
-    success: true,
-    posts: [
-      { id: '1', user: '@stephen', name: 'Stephen Olmo', text: 'First project of the year done.', type: 'post', image: 'https://picsum.photos/seed/wood1/600/750', widescreen: true, smiles: 12, comments: [] },
-      { id: '2', user: '✦ Inspire', text: '"The secret of getting ahead is getting started."', author: '— Mark Twain', type: 'inspire', smiles: 34, comments: [], widescreen: true },
-    ]
-  };
-});
-
-fastify.post('/posts/:id/smile', async (request, reply) => {
-  const { id } = request.params;
-  return { success: true, postId: id, message: 'Smile recorded' };
-});
-
-fastify.post('/posts/:id/comment', async (request, reply) => {
-  const { id } = request.params;
-  const { text, user } = request.body;
-  return { success: true, postId: id, comment: { user, text, id: Date.now().toString() } };
-});
-
-// Start server
-const start = async () => {
   try {
-    await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
-    console.log('Happ-E server running on port 3000');
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (result.rows.length === 0) {
+      return reply.status(401).send({ error: 'No account found with this email' });
+    }
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    if (!validPassword) {
+      return reply.status(401).send({ error: 'Incorrect password' });
+    }
+    const token = fastify.jwt.sign({ id: user.id, email: user.email, handle: user.handle });
+    return {
+      success: true,
+      token,
+      user: { id: user.id, name: user.name, email: user.email, handle: user.handle }
+    };
   } catch (err) {
     fastify.log.error(err);
-    process.exit(1);
+    return reply.status(500).send({ error: 'Server error. Please try again.' });
   }
-};
+});
 
-start();
+// Get posts
+fastify.get('/posts', async (request, reply) => {
+  try {
+    const result = await pool.query(`
+      SELECT p.*, u.name, u.handle,
+        COUNT(DISTINCT s.id) as smile_count,
+        COUNT(DISTINCT c.id) as comment_count
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      LEFT JOIN smiles s ON p.id = s.post_id
+      LEFT JOIN comments c ON p.id = c.post_id
+      GROUP BY p.id, u.name, u.handle
+      ORDER BY p.created_at DESC
+    `);
+    return { success: true, posts: result.rows };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Could not fetch posts' });
+  }
+});
+
+// Smile a post
+fastify.post('/posts/:id/smile', async (request, reply) => {
+  const { id } = request.params;
+  try {
+    await request.jwtVerify();
+    await pool.query(
+      'INSERT INTO smiles (user_id, post_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [request.user.id, id]
+    );
+    return { success: true };
+  } catch (err) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+});
+
+// Comment on a post
+fastify.post('/posts/:id/comment', async (request, reply) => {
+  const { id } = request.params;
+  const { text } = request.body;
+  try {
+    await request.jwtVerify();
+    const result = await pool.query(
+      'INSERT INTO comments (user_id, post_id, text) VALUES ($1, $2, $3) RETURNING *',
+      [request.user.id, id, text]
+    );
+    return { success: true, comment: result.rows[0]

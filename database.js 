@@ -1,0 +1,57 @@
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+});
+
+const initDB = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        handle VARCHAR(100) UNIQUE NOT NULL,
+        bio TEXT DEFAULT '',
+        category VARCHAR(100) DEFAULT '',
+        verified BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS posts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        type VARCHAR(20) NOT NULL,
+        text TEXT,
+        image_url TEXT,
+        video_url TEXT,
+        widescreen BOOLEAN DEFAULT false,
+        author_quote TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS smiles (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        post_id INTEGER REFERENCES posts(id),
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, post_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS comments (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        post_id INTEGER REFERENCES posts(id),
+        text TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log('Database tables ready');
+  } catch (err) {
+    console.error('Database init error:', err);
+  }
+};
+
+module.exports = { pool, initDB };
