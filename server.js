@@ -8,6 +8,8 @@ const jwt = require('@fastify/jwt');
 const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 
+console.log('DATABASE_URL starts with:', process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 30) : 'NOT SET');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
