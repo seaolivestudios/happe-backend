@@ -33,6 +33,15 @@ fastify.get('/', async () => ({
   version: '1.0.0'
 }));
 
+fastify.post('/test-auth', async (request, reply) => {
+  try {
+    await request.jwtVerify();
+    return { success: true, user: request.user };
+  } catch (err) {
+    return reply.status(401).send({ error: err.message });
+  }
+});
+
 fastify.post('/auth/register', async (request, reply) => {
   const { name, email, password } = request.body;
   if (!name || !email || !password) {
