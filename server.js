@@ -100,7 +100,7 @@ fastify.post('/posts', async (request, reply) => {
   try {
     const result = await pool.query(
       'INSERT INTO posts (user_id, type, text, image_url, video_url, widescreen, author_quote) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [request.user.id, type, text, image_url, video_url, widescreen, author]
+      [request.user.id, type, text, image_url, video_url, widescreen || false, author || null]
     );
     return { success: true, post: result.rows[0] };
   } catch (err) {
@@ -189,7 +189,6 @@ const initDB = async () => {
       image_url TEXT,
       video_url TEXT,
       widescreen BOOLEAN DEFAULT false,
-      author_quote TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS smiles (
@@ -206,6 +205,9 @@ const initDB = async () => {
       text TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     );
+  `);
+  await pool.query(`
+    ALTER TABLE posts ADD COLUMN IF NOT EXISTS author_quote TEXT;
   `);
   console.log('Database ready');
 };
