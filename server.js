@@ -180,6 +180,13 @@ fastify.post('/posts/:id/smile', async (request, reply) => {
       'INSERT INTO smiles (user_id, post_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
       [request.user.id, id]
     );
+    const post = await pool.query('SELECT user_id FROM posts WHERE id = $1', [id]);
+    if (post.rows.length > 0 && post.rows[0].user_id !== request.user.id) {
+      await pool.query(
+        'INSERT INTO notifications (user_id, type, actor_id, post_id) VALUES ($1, $2, $3, $4)',
+        [post.rows[0].user_id, 'smile', request.user.id, id]
+      );
+    }
     return { success: true };
   } catch (err) {
     fastify.log.error(err);
@@ -200,7 +207,243 @@ fastify.post('/posts/:id/comment', async (request, reply) => {
       'INSERT INTO comments (user_id, post_id, text) VALUES ($1, $2, $3) RETURNING *',
       [request.user.id, id, text]
     );
+    const post = await pool.query('SELECT user_id FROM posts WHERE id = $1', [id]);
+    if (post.rows.length > 0 && post.rows[0].user_id !== request.user.id) {
+      await pool.query(
+        'INSERT INTO notifications (user_id, type, actor_id, post_id) VALUES ($1, $2, $3, $4)',
+        [post.rows[0].user_id, 'comment', request.user.id, id]
+      );
+    }
     return { success: true, comment: result.rows[0] };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// POST /onboarding/complete
+fastify.post('/onboarding/complete', async (request, reply) => {
+  try {
+    await request.jwtVerify();
+  } catch (err) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+  const { interests } = request.body;
+  if (!Array.isArray(interests) || interests.length < 3) {
+    return reply.status(400).send({ error: 'Select at least 3 interests' });
+  }
+  try {
+    await pool.query(
+      'UPDATE users SET interests = $1, onboarded = true WHERE id = $2',
+      [interests, request.user.id]
+    );
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// GET /profile/me/posts
+fastify.get('/profile/me/posts', async (request, reply) => {
+  try {
+    await request.jwtVerify();
+  } catch (err) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+  try {
+    const result = await pool.query(
+      `SELECT id, type, text, image_url, video_url, created_at,
+              COUNT(DISTINCT s.id) as smile_count
+       FROM posts
+       LEFT JOIN smiles s ON posts.id = s.post_id
+       WHERE posts.user_id = $1
+       GROUP BY posts.id
+       ORDER BY posts.created_at DESC`,
+      [request.user.id]
+    );
+    return { success: true, posts: result.rows };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// --- Follows ---
+
+fastify.post('/follows/:id', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { id } = request.params;
+  if (parseInt(id) === request.user.id) return reply.status(400).send({ error: 'Cannot follow yourself' });
+  try {
+    await pool.query(
+      'INSERT INTO follows (follower_id, following_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [request.user.id, id]
+    );
+    await pool.query(
+      'INSERT INTO notifications (user_id, type, actor_id) VALUES ($1, $2, $3)',
+      [id, 'follow', request.user.id]
+    );
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.delete('/follows/:id', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { id } = request.params;
+  try {
+    await pool.query('DELETE FROM follows WHERE follower_id = $1 AND following_id = $2', [request.user.id, id]);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// --- User search ---
+
+fastify.get('/users/search', async (request, reply) => {
+  const { q } = request.query;
+  if (!q || q.trim().length === 0) return { success: true, users: [] };
+  const term = `%${q.trim().toLowerCase()}%`;
+  try {
+    const result = await pool.query(
+      `SELECT id, name, handle, category, verified FROM users
+       WHERE LOWER(name) LIKE $1 OR LOWER(handle) LIKE $1 OR LOWER(category) LIKE $1
+       LIMIT 30`,
+      [term]
+    );
+    return { success: true, users: result.rows };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.get('/users/suggested', async (request, reply) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, handle, category, verified FROM users ORDER BY created_at DESC LIMIT 20`
+    );
+    return { success: true, users: result.rows };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// --- Notifications ---
+
+fastify.get('/notifications', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const result = await pool.query(
+      `SELECT n.id, n.type, n.read, n.created_at, n.post_id,
+              u.name as actor_name, u.handle as actor_handle
+       FROM notifications n
+       JOIN users u ON n.actor_id = u.id
+       WHERE n.user_id = $1
+       ORDER BY n.created_at DESC
+       LIMIT 50`,
+      [request.user.id]
+    );
+    return { success: true, notifications: result.rows };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.post('/notifications/read-all', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    await pool.query('UPDATE notifications SET read = true WHERE user_id = $1', [request.user.id]);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// --- Sparks ---
+
+const SPARK_PROMPTS = [
+  'Show us your workspace right now — messy or not.',
+  'What's the last thing you made with your hands?',
+  'Share a tool you couldn't live without.',
+  'Show us something you made that you're proud of.',
+  'What does your creative process look like?',
+  'Show us a work in progress.',
+  'Share your favorite spot to create.',
+  'What's the hardest thing you've ever made?',
+  'Show us something you made as a gift.',
+  'What got you started in your craft?',
+  'Share a before and after of your latest project.',
+  'Show us your most-used piece of gear.',
+  'What's something you're still learning?',
+  'Share a recent mistake that taught you something.',
+  'Show us your creative setup.',
+];
+
+fastify.get('/sparks/current', async (request, reply) => {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const prompt = SPARK_PROMPTS[dayOfYear % SPARK_PROMPTS.length];
+  try {
+    const responseCount = await pool.query(
+      `SELECT COUNT(*) FROM posts WHERE spark_prompt = $1`, [prompt]
+    );
+    return {
+      success: true,
+      spark: {
+        prompt,
+        responses: parseInt(responseCount.rows[0].count) || 0,
+      }
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.get('/sparks/current/responses', async (request, reply) => {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const prompt = SPARK_PROMPTS[dayOfYear % SPARK_PROMPTS.length];
+  try {
+    const result = await pool.query(
+      `SELECT p.*, u.name, u.handle,
+              COUNT(DISTINCT s.id) as smile_count,
+              COUNT(DISTINCT c.id) as comment_count
+       FROM posts p
+       JOIN users u ON p.user_id = u.id
+       LEFT JOIN smiles s ON p.id = s.post_id
+       LEFT JOIN comments c ON p.id = c.post_id
+       WHERE p.spark_prompt = $1
+       GROUP BY p.id, u.name, u.handle
+       ORDER BY smile_count DESC
+       LIMIT 20`,
+      [prompt]
+    );
+    return { success: true, responses: result.rows };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.post('/sparks/current/respond', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { text, image_url, video_url, type } = request.body;
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const prompt = SPARK_PROMPTS[dayOfYear % SPARK_PROMPTS.length];
+  try {
+    const result = await pool.query(
+      'INSERT INTO posts (user_id, type, text, image_url, video_url, spark_prompt) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [request.user.id, type || 'image', text, image_url || null, video_url || null, prompt]
+    );
+    return { success: true, post: result.rows[0] };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: err.message });
@@ -257,6 +500,20 @@ const initDB = async () => {
   `);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS location VARCHAR(100) DEFAULT '';`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255) DEFAULT '';`);
+  await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS spark_prompt TEXT;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interests TEXT[] DEFAULT '{}';`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded BOOLEAN DEFAULT false;`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      type VARCHAR(20) NOT NULL,
+      actor_id INTEGER REFERENCES users(id),
+      post_id INTEGER REFERENCES posts(id),
+      read BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
   console.log('Database ready');
 };
 
