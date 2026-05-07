@@ -246,18 +246,32 @@ fastify.post('/posts', async (request, reply) => {
 });
 
 fastify.get('/posts', async (request, reply) => {
+  const { category } = request.query;
   try {
-    const result = await pool.query(`
-      SELECT p.*, u.name, u.handle, u.avatar_url,
-        COUNT(DISTINCT s.id) as smile_count,
-        COUNT(DISTINCT c.id) as comment_count
-      FROM posts p
-      JOIN users u ON p.user_id = u.id
-      LEFT JOIN smiles s ON p.id = s.post_id
-      LEFT JOIN comments c ON p.id = c.post_id
-      GROUP BY p.id, u.name, u.handle, u.avatar_url
-      ORDER BY p.created_at DESC
-    `);
+    const result = category
+      ? await pool.query(`
+          SELECT p.*, u.name, u.handle, u.avatar_url,
+            COUNT(DISTINCT s.id) as smile_count,
+            COUNT(DISTINCT c.id) as comment_count
+          FROM posts p
+          JOIN users u ON p.user_id = u.id
+          LEFT JOIN smiles s ON p.id = s.post_id
+          LEFT JOIN comments c ON p.id = c.post_id
+          WHERE LOWER(p.category) = LOWER($1)
+          GROUP BY p.id, u.name, u.handle, u.avatar_url
+          ORDER BY p.created_at DESC
+        `, [category])
+      : await pool.query(`
+          SELECT p.*, u.name, u.handle, u.avatar_url,
+            COUNT(DISTINCT s.id) as smile_count,
+            COUNT(DISTINCT c.id) as comment_count
+          FROM posts p
+          JOIN users u ON p.user_id = u.id
+          LEFT JOIN smiles s ON p.id = s.post_id
+          LEFT JOIN comments c ON p.id = c.post_id
+          GROUP BY p.id, u.name, u.handle, u.avatar_url
+          ORDER BY p.created_at DESC
+        `);
     return { success: true, posts: result.rows };
   } catch (err) {
     fastify.log.error(err);
