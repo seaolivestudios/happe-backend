@@ -90,6 +90,45 @@ fastify.post('/auth/login', async (request, reply) => {
   }
 });
 
+fastify.get('/profile', async (request, reply) => {
+  try {
+    await request.jwtVerify();
+    const result = await pool.query(
+      'SELECT id, name, email, handle, bio, category, verified, created_at FROM users WHERE id = $1',
+      [request.user.id]
+    );
+    if (result.rows.length === 0) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+    const postCount = await pool.query('SELECT COUNT(*) FROM posts WHERE user_id = $1', [request.user.id]);
+    return {
+      success: true,
+      user: {
+        ...result.rows[0],
+        post_count: parseInt(postCount.rows[0].count) || 0,
+      }
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+});
+
+fastify.put('/profile', async (request, reply) => {
+  const { name, bio, category } = request.body;
+  try {
+    await request.jwtVerify();
+    const result = await pool.query(
+      'UPDATE users SET name = $1, bio = $2, category = $3 WHERE id = $4 RETURNING id, name, email, handle, bio, category',
+      [name, bio, category, request.user.id]
+    );
+    return { success: true, user: result.rows[0] };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+});
+
 fastify.post('/posts', async (request, reply) => {
   const { type, text, image_url, video_url, widescreen, author } = request.body;
   try {
