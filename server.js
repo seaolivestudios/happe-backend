@@ -171,8 +171,37 @@ fastify.put('/profile/me', async (request, reply) => {
   }
 });
 
+fastify.get('/posts/:id', async (request, reply) => {
+  const { id } = request.params;
+  try {
+    const result = await pool.query(`
+      SELECT p.*, u.name, u.handle,
+        COUNT(DISTINCT s.id) as smile_count,
+        COUNT(DISTINCT c.id) as comment_count
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      LEFT JOIN smiles s ON p.id = s.post_id
+      LEFT JOIN comments c ON p.id = c.post_id
+      WHERE p.id = $1
+      GROUP BY p.id, u.name, u.handle
+    `, [id]);
+    if (result.rows.length === 0) return reply.status(404).send({ error: 'Post not found' });
+    const comments = await pool.query(`
+      SELECT c.text, c.created_at, u.name, u.handle
+      FROM comments c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.post_id = $1
+      ORDER BY c.created_at ASC
+    `, [id]);
+    return { success: true, post: { ...result.rows[0], comments: comments.rows } };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
 fastify.post('/posts', async (request, reply) => {
-  const { type, text, image_url, video_url, widescreen, author } = request.body;
+  const { type, text, image_url, video_url, widescreen, author, category } = request.body;
   try {
     await request.jwtVerify();
   } catch (err) {
@@ -180,8 +209,8 @@ fastify.post('/posts', async (request, reply) => {
   }
   try {
     const result = await pool.query(
-      'INSERT INTO posts (user_id, type, text, image_url, video_url, widescreen, author_quote) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [request.user.id, type, text, image_url, video_url, widescreen || false, author || null]
+      'INSERT INTO posts (user_id, type, text, image_url, video_url, widescreen, author_quote, category) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [request.user.id, type, text, image_url, video_url, widescreen || false, author || null, category || null]
     );
     return { success: true, post: result.rows[0] };
   } catch (err) {
@@ -545,6 +574,7 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS spark_prompt TEXT;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interests TEXT[] DEFAULT '{}';`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded BOOLEAN DEFAULT false;`);
+  await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT NULL;`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS notifications (
       id SERIAL PRIMARY KEY,
