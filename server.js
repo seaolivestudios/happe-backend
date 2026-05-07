@@ -201,7 +201,7 @@ fastify.get('/posts/:id', async (request, reply) => {
   const { id } = request.params;
   try {
     const result = await pool.query(`
-      SELECT p.*, u.name, u.handle, u.avatar_url,
+      SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
         COUNT(DISTINCT s.id) as smile_count,
         COUNT(DISTINCT c.id) as comment_count
       FROM posts p
@@ -209,7 +209,7 @@ fastify.get('/posts/:id', async (request, reply) => {
       LEFT JOIN smiles s ON p.id = s.post_id
       LEFT JOIN comments c ON p.id = c.post_id
       WHERE p.id = $1
-      GROUP BY p.id, u.name, u.handle, u.avatar_url
+      GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
     `, [id]);
     if (result.rows.length === 0) return reply.status(404).send({ error: 'Post not found' });
     const comments = await pool.query(`
