@@ -76,6 +76,48 @@ fastify.post('/auth/login', async (request, reply) => {
   }
 });
 
+fastify.post('/auth/change-password', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { currentPassword, newPassword } = request.body;
+  if (!currentPassword || !newPassword) return reply.status(400).send({ error: 'Both passwords required' });
+  if (newPassword.length < 8) return reply.status(400).send({ error: 'New password must be at least 8 characters' });
+  try {
+    const result = await pool.query('SELECT password_hash FROM users WHERE id = $1', [request.user.id]);
+    if (result.rows.length === 0) return reply.status(404).send({ error: 'User not found' });
+    const valid = await bcrypt.compare(currentPassword, result.rows[0].password_hash);
+    if (!valid) return reply.status(401).send({ error: 'Current password is incorrect' });
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, request.user.id]);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Server error' });
+  }
+});
+
+fastify.delete('/auth/account', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { password } = request.body;
+  if (!password) return reply.status(400).send({ error: 'Password required' });
+  try {
+    const result = await pool.query('SELECT password_hash FROM users WHERE id = $1', [request.user.id]);
+    if (result.rows.length === 0) return reply.status(404).send({ error: 'User not found' });
+    const valid = await bcrypt.compare(password, result.rows[0].password_hash);
+    if (!valid) return reply.status(401).send({ error: 'Incorrect password' });
+    const uid = request.user.id;
+    await pool.query('DELETE FROM notifications WHERE user_id = $1 OR actor_id = $1', [uid]);
+    await pool.query('DELETE FROM smiles WHERE user_id = $1', [uid]);
+    await pool.query('DELETE FROM comments WHERE user_id = $1', [uid]);
+    await pool.query('DELETE FROM follows WHERE follower_id = $1 OR following_id = $1', [uid]);
+    await pool.query('DELETE FROM posts WHERE user_id = $1', [uid]);
+    await pool.query('DELETE FROM users WHERE id = $1', [uid]);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Server error' });
+  }
+});
+
 // GET /profile/me
 fastify.get('/profile/me', async (request, reply) => {
   try {
