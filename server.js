@@ -22,6 +22,19 @@ fastify.register(jwt, {
   secret: process.env.JWT_SECRET || 'happe-secret-key',
 });
 
+async function sendPush(pushToken, title, body, data = {}) {
+  if (!pushToken || !pushToken.startsWith('ExponentPushToken')) return;
+  try {
+    await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: pushToken, title, body, data, sound: 'default' }),
+    });
+  } catch (err) {
+    console.error('Push send error:', err.message);
+  }
+}
+
 fastify.get('/', async () => ({
   status: 'ok',
   message: 'Happ-E API is running',
@@ -70,6 +83,19 @@ fastify.post('/auth/login', async (request, reply) => {
     }
     const token = fastify.jwt.sign({ id: user.id, email: user.email, handle: user.handle });
     return { success: true, token, user: { id: user.id, name: user.name, email: user.email, handle: user.handle } };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Server error' });
+  }
+});
+
+fastify.post('/auth/push-token', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { pushToken } = request.body;
+  if (!pushToken) return reply.status(400).send({ error: 'pushToken required' });
+  try {
+    await pool.query('UPDATE users SET push_token = $1 WHERE id = $2', [pushToken, request.user.id]);
+    return { success: true };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Server error' });
@@ -257,6 +283,12 @@ fastify.post('/posts/:id/smile', async (request, reply) => {
         'INSERT INTO notifications (user_id, type, actor_id, post_id) VALUES ($1, $2, $3, $4)',
         [post.rows[0].user_id, 'smile', request.user.id, id]
       );
+      const actor = await pool.query('SELECT name FROM users WHERE id = $1', [request.user.id]);
+      const owner = await pool.query('SELECT push_token FROM users WHERE id = $1', [post.rows[0].user_id]);
+      if (owner.rows[0]?.push_token) {
+        const actorName = actor.rows[0]?.name ?? 'Someone';
+        await sendPush(owner.rows[0].push_token, 'Happ-E', `${actorName} smiled at your post 😊`, { type: 'smile', postId: String(id) });
+      }
     }
     return { success: true };
   } catch (err) {
@@ -284,6 +316,12 @@ fastify.post('/posts/:id/comment', async (request, reply) => {
         'INSERT INTO notifications (user_id, type, actor_id, post_id) VALUES ($1, $2, $3, $4)',
         [post.rows[0].user_id, 'comment', request.user.id, id]
       );
+      const actor = await pool.query('SELECT name FROM users WHERE id = $1', [request.user.id]);
+      const owner = await pool.query('SELECT push_token FROM users WHERE id = $1', [post.rows[0].user_id]);
+      if (owner.rows[0]?.push_token) {
+        const actorName = actor.rows[0]?.name ?? 'Someone';
+        await sendPush(owner.rows[0].push_token, 'Happ-E', `${actorName} commented on your post`, { type: 'comment', postId: String(id) });
+      }
     }
     return { success: true, comment: result.rows[0] };
   } catch (err) {
@@ -355,6 +393,12 @@ fastify.post('/follows/:id', async (request, reply) => {
       'INSERT INTO notifications (user_id, type, actor_id) VALUES ($1, $2, $3)',
       [id, 'follow', request.user.id]
     );
+    const actor = await pool.query('SELECT name FROM users WHERE id = $1', [request.user.id]);
+    const followed = await pool.query('SELECT push_token FROM users WHERE id = $1', [id]);
+    if (followed.rows[0]?.push_token) {
+      const actorName = actor.rows[0]?.name ?? 'Someone';
+      await sendPush(followed.rows[0].push_token, 'Happ-E', `${actorName} started following you`, { type: 'follow' });
+    }
     return { success: true };
   } catch (err) {
     fastify.log.error(err);
@@ -575,6 +619,7 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interests TEXT[] DEFAULT '{}';`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded BOOLEAN DEFAULT false;`);
   await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT NULL;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT DEFAULT NULL;`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS notifications (
       id SERIAL PRIMARY KEY,
