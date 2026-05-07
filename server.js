@@ -371,21 +371,21 @@ fastify.post('/notifications/read-all', async (request, reply) => {
 // --- Sparks ---
 
 const SPARK_PROMPTS = [
-  'Show us your workspace right now — messy or not.',
-  'What's the last thing you made with your hands?',
-  'Share a tool you couldn't live without.',
-  'Show us something you made that you're proud of.',
-  'What does your creative process look like?',
-  'Show us a work in progress.',
-  'Share your favorite spot to create.',
-  'What's the hardest thing you've ever made?',
-  'Show us something you made as a gift.',
-  'What got you started in your craft?',
-  'Share a before and after of your latest project.',
-  'Show us your most-used piece of gear.',
-  'What's something you're still learning?',
-  'Share a recent mistake that taught you something.',
-  'Show us your creative setup.',
+  "Show us your workspace right now — messy or not.",
+  "What's the last thing you made with your hands?",
+  "Share a tool you couldn't live without.",
+  "Show us something you made that you're proud of.",
+  "What does your creative process look like?",
+  "Show us a work in progress.",
+  "Share your favorite spot to create.",
+  "What's the hardest thing you've ever made?",
+  "Show us something you made as a gift.",
+  "What got you started in your craft?",
+  "Share a before and after of your latest project.",
+  "Show us your most-used piece of gear.",
+  "What's something you're still learning?",
+  "Share a recent mistake that taught you something.",
+  "Show us your creative setup.",
 ];
 
 fastify.get('/sparks/current', async (request, reply) => {
