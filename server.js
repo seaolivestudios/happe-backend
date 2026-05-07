@@ -406,6 +406,20 @@ fastify.post('/follows/:id', async (request, reply) => {
   }
 });
 
+fastify.get('/follows/:id/check', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { id } = request.params;
+  try {
+    const result = await pool.query(
+      'SELECT id FROM follows WHERE follower_id = $1 AND following_id = $2',
+      [request.user.id, id]
+    );
+    return { following: result.rows.length > 0 };
+  } catch (err) {
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
 fastify.delete('/follows/:id', async (request, reply) => {
   try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
   const { id } = request.params;
@@ -419,6 +433,39 @@ fastify.delete('/follows/:id', async (request, reply) => {
 });
 
 // --- User search ---
+
+fastify.get('/users/:id', async (request, reply) => {
+  const { id } = request.params;
+  try {
+    const result = await pool.query(
+      `SELECT id, name, handle, bio, category, location, avatar_url, verified, created_at FROM users WHERE id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) return reply.status(404).send({ error: 'User not found' });
+    const postCount = await pool.query('SELECT COUNT(*) FROM posts WHERE user_id = $1', [id]);
+    const followerCount = await pool.query('SELECT COUNT(*) FROM follows WHERE following_id = $1', [id]);
+    const followingCount = await pool.query('SELECT COUNT(*) FROM follows WHERE follower_id = $1', [id]);
+    const posts = await pool.query(
+      `SELECT id, type, text, image_url, video_url, created_at, COUNT(DISTINCT s.id) as smile_count
+       FROM posts LEFT JOIN smiles s ON posts.id = s.post_id
+       WHERE posts.user_id = $1 GROUP BY posts.id ORDER BY posts.created_at DESC`,
+      [id]
+    );
+    return {
+      success: true,
+      user: {
+        ...result.rows[0],
+        posts: parseInt(postCount.rows[0].count) || 0,
+        followers: parseInt(followerCount.rows[0].count) || 0,
+        following: parseInt(followingCount.rows[0].count) || 0,
+      },
+      userPosts: posts.rows,
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
 
 fastify.get('/users/search', async (request, reply) => {
   const { q } = request.query;
@@ -456,8 +503,8 @@ fastify.get('/notifications', async (request, reply) => {
   try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
   try {
     const result = await pool.query(
-      `SELECT n.id, n.type, n.read, n.created_at, n.post_id,
-              u.name as actor_name, u.handle as actor_handle
+      `SELECT n.id, n.type, n.read, n.created_at, n.post_id, n.actor_id,
+              u.name as actor_name, u.handle as actor_handle, u.avatar_url as actor_avatar_url
        FROM notifications n
        JOIN users u ON n.actor_id = u.id
        WHERE n.user_id = $1
