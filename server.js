@@ -153,7 +153,7 @@ fastify.get('/profile/me', async (request, reply) => {
   }
   try {
     const result = await pool.query(
-      'SELECT id, name, email, handle, bio, category, location, website, verified, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, handle, bio, category, location, website, avatar_url, verified, created_at FROM users WHERE id = $1',
       [request.user.id]
     );
     if (result.rows.length === 0) {
@@ -184,11 +184,11 @@ fastify.put('/profile/me', async (request, reply) => {
   } catch (err) {
     return reply.status(401).send({ error: 'Unauthorized' });
   }
-  const { name, bio, category, location, website } = request.body;
+  const { name, bio, category, location, website, avatar_url } = request.body;
   try {
     const result = await pool.query(
-      'UPDATE users SET name = $1, bio = $2, category = $3, location = $4, website = $5 WHERE id = $6 RETURNING id, name, email, handle, bio, category, location, website',
-      [name, bio, category, location, website, request.user.id]
+      'UPDATE users SET name = $1, bio = $2, category = $3, location = $4, website = $5, avatar_url = COALESCE($6, avatar_url) WHERE id = $7 RETURNING id, name, email, handle, bio, category, location, website, avatar_url',
+      [name, bio, category, location, website, avatar_url ?? null, request.user.id]
     );
     return { success: true, user: result.rows[0] };
   } catch (err) {
@@ -201,7 +201,7 @@ fastify.get('/posts/:id', async (request, reply) => {
   const { id } = request.params;
   try {
     const result = await pool.query(`
-      SELECT p.*, u.name, u.handle,
+      SELECT p.*, u.name, u.handle, u.avatar_url,
         COUNT(DISTINCT s.id) as smile_count,
         COUNT(DISTINCT c.id) as comment_count
       FROM posts p
@@ -209,11 +209,11 @@ fastify.get('/posts/:id', async (request, reply) => {
       LEFT JOIN smiles s ON p.id = s.post_id
       LEFT JOIN comments c ON p.id = c.post_id
       WHERE p.id = $1
-      GROUP BY p.id, u.name, u.handle
+      GROUP BY p.id, u.name, u.handle, u.avatar_url
     `, [id]);
     if (result.rows.length === 0) return reply.status(404).send({ error: 'Post not found' });
     const comments = await pool.query(`
-      SELECT c.text, c.created_at, u.name, u.handle
+      SELECT c.text, c.created_at, u.name, u.handle, u.avatar_url
       FROM comments c
       JOIN users u ON c.user_id = u.id
       WHERE c.post_id = $1
@@ -248,14 +248,14 @@ fastify.post('/posts', async (request, reply) => {
 fastify.get('/posts', async (request, reply) => {
   try {
     const result = await pool.query(`
-      SELECT p.*, u.name, u.handle,
+      SELECT p.*, u.name, u.handle, u.avatar_url,
         COUNT(DISTINCT s.id) as smile_count,
         COUNT(DISTINCT c.id) as comment_count
       FROM posts p
       JOIN users u ON p.user_id = u.id
       LEFT JOIN smiles s ON p.id = s.post_id
       LEFT JOIN comments c ON p.id = c.post_id
-      GROUP BY p.id, u.name, u.handle
+      GROUP BY p.id, u.name, u.handle, u.avatar_url
       ORDER BY p.created_at DESC
     `);
     return { success: true, posts: result.rows };
@@ -426,7 +426,7 @@ fastify.get('/users/search', async (request, reply) => {
   const term = `%${q.trim().toLowerCase()}%`;
   try {
     const result = await pool.query(
-      `SELECT id, name, handle, category, verified FROM users
+      `SELECT id, name, handle, category, avatar_url, verified FROM users
        WHERE LOWER(name) LIKE $1 OR LOWER(handle) LIKE $1 OR LOWER(category) LIKE $1
        LIMIT 30`,
       [term]
@@ -441,7 +441,7 @@ fastify.get('/users/search', async (request, reply) => {
 fastify.get('/users/suggested', async (request, reply) => {
   try {
     const result = await pool.query(
-      `SELECT id, name, handle, category, verified FROM users ORDER BY created_at DESC LIMIT 20`
+      `SELECT id, name, handle, category, avatar_url, verified FROM users ORDER BY created_at DESC LIMIT 20`
     );
     return { success: true, users: result.rows };
   } catch (err) {
@@ -528,7 +528,7 @@ fastify.get('/sparks/current/responses', async (request, reply) => {
   const prompt = SPARK_PROMPTS[dayOfYear % SPARK_PROMPTS.length];
   try {
     const result = await pool.query(
-      `SELECT p.*, u.name, u.handle,
+      `SELECT p.*, u.name, u.handle, u.avatar_url,
               COUNT(DISTINCT s.id) as smile_count,
               COUNT(DISTINCT c.id) as comment_count
        FROM posts p
@@ -536,7 +536,7 @@ fastify.get('/sparks/current/responses', async (request, reply) => {
        LEFT JOIN smiles s ON p.id = s.post_id
        LEFT JOIN comments c ON p.id = c.post_id
        WHERE p.spark_prompt = $1
-       GROUP BY p.id, u.name, u.handle
+       GROUP BY p.id, u.name, u.handle, u.avatar_url
        ORDER BY smile_count DESC
        LIMIT 20`,
       [prompt]
@@ -620,6 +620,7 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded BOOLEAN DEFAULT false;`);
   await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT NULL;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT DEFAULT NULL;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT NULL;`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS notifications (
       id SERIAL PRIMARY KEY,
