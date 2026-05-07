@@ -8,11 +8,6 @@ const jwt = require('@fastify/jwt');
 const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 
-console.log('PGHOST:', process.env.PGHOST || 'NOT SET');
-console.log('PGPORT:', process.env.PGPORT || 'NOT SET');
-console.log('PGUSER:', process.env.PGUSER || 'NOT SET');
-console.log('PGDATABASE:', process.env.PGDATABASE || 'NOT SET');
-
 const pool = new Pool({
   host: process.env.PGHOST,
   port: parseInt(process.env.PGPORT || '5432'),
@@ -32,15 +27,6 @@ fastify.get('/', async () => ({
   message: 'Happ-E API is running',
   version: '1.0.0'
 }));
-
-fastify.post('/test-auth', async (request, reply) => {
-  try {
-    await request.jwtVerify();
-    return { success: true, user: request.user };
-  } catch (err) {
-    return reply.status(401).send({ error: err.message });
-  }
-});
 
 fastify.post('/auth/register', async (request, reply) => {
   const { name, email, password } = request.body;
@@ -90,42 +76,56 @@ fastify.post('/auth/login', async (request, reply) => {
   }
 });
 
-fastify.get('/profile', async (request, reply) => {
+// GET /profile/me
+fastify.get('/profile/me', async (request, reply) => {
   try {
     await request.jwtVerify();
+  } catch (err) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+  try {
     const result = await pool.query(
-      'SELECT id, name, email, handle, bio, category, verified, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, handle, bio, category, location, website, verified, created_at FROM users WHERE id = $1',
       [request.user.id]
     );
     if (result.rows.length === 0) {
       return reply.status(404).send({ error: 'User not found' });
     }
     const postCount = await pool.query('SELECT COUNT(*) FROM posts WHERE user_id = $1', [request.user.id]);
+    const followerCount = await pool.query('SELECT COUNT(*) FROM follows WHERE following_id = $1', [request.user.id]);
+    const followingCount = await pool.query('SELECT COUNT(*) FROM follows WHERE follower_id = $1', [request.user.id]);
     return {
       success: true,
       user: {
         ...result.rows[0],
-        post_count: parseInt(postCount.rows[0].count) || 0,
+        posts: parseInt(postCount.rows[0].count) || 0,
+        followers: parseInt(followerCount.rows[0].count) || 0,
+        following: parseInt(followingCount.rows[0].count) || 0,
       }
     };
   } catch (err) {
     fastify.log.error(err);
-    return reply.status(401).send({ error: 'Unauthorized' });
+    return reply.status(500).send({ error: 'Server error' });
   }
 });
 
-fastify.put('/profile', async (request, reply) => {
-  const { name, bio, category } = request.body;
+// PUT /profile/me
+fastify.put('/profile/me', async (request, reply) => {
   try {
     await request.jwtVerify();
+  } catch (err) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+  const { name, bio, category, location, website } = request.body;
+  try {
     const result = await pool.query(
-      'UPDATE users SET name = $1, bio = $2, category = $3 WHERE id = $4 RETURNING id, name, email, handle, bio, category',
-      [name, bio, category, request.user.id]
+      'UPDATE users SET name = $1, bio = $2, category = $3, location = $4, website = $5 WHERE id = $6 RETURNING id, name, email, handle, bio, category, location, website',
+      [name, bio, category, location, website, request.user.id]
     );
     return { success: true, user: result.rows[0] };
   } catch (err) {
     fastify.log.error(err);
-    return reply.status(401).send({ error: 'Unauthorized' });
+    return reply.status(500).send({ error: 'Server error' });
   }
 });
 
@@ -217,6 +217,8 @@ const initDB = async () => {
       handle VARCHAR(100) UNIQUE NOT NULL,
       bio TEXT DEFAULT '',
       category VARCHAR(100) DEFAULT '',
+      location VARCHAR(100) DEFAULT '',
+      website VARCHAR(255) DEFAULT '',
       verified BOOLEAN DEFAULT false,
       created_at TIMESTAMP DEFAULT NOW()
     );
@@ -228,6 +230,7 @@ const initDB = async () => {
       image_url TEXT,
       video_url TEXT,
       widescreen BOOLEAN DEFAULT false,
+      author_quote TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS smiles (
@@ -244,10 +247,16 @@ const initDB = async () => {
       text TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS follows (
+      id SERIAL PRIMARY KEY,
+      follower_id INTEGER REFERENCES users(id),
+      following_id INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(follower_id, following_id)
+    );
   `);
-  await pool.query(`
-    ALTER TABLE posts ADD COLUMN IF NOT EXISTS author_quote TEXT;
-  `);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS location VARCHAR(100) DEFAULT '';`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255) DEFAULT '';`);
   console.log('Database ready');
 };
 
