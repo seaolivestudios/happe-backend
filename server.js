@@ -246,11 +246,45 @@ fastify.post('/posts', async (request, reply) => {
 });
 
 fastify.get('/posts', async (request, reply) => {
-  const { category } = request.query;
+  const { category, mood } = request.query;
   try {
-    const result = category
-      ? await pool.query(`
-          SELECT p.*, u.name, u.handle, u.avatar_url,
+    let result;
+    if (mood === 'true') {
+      // For You feed — filter by authenticated user's interests
+      let userId = null;
+      try { await request.jwtVerify(); userId = request.user.id; } catch {}
+      if (userId) {
+        result = await pool.query(`
+          SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
+            COUNT(DISTINCT s.id) as smile_count,
+            COUNT(DISTINCT c.id) as comment_count
+          FROM posts p
+          JOIN users u ON p.user_id = u.id
+          LEFT JOIN smiles s ON p.id = s.post_id
+          LEFT JOIN comments c ON p.id = c.post_id
+          WHERE p.category = ANY(
+            SELECT unnest(interests) FROM users WHERE id = $1
+          )
+          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+          ORDER BY p.created_at DESC
+          LIMIT 100
+        `, [userId]);
+      } else {
+        result = await pool.query(`
+          SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
+            COUNT(DISTINCT s.id) as smile_count,
+            COUNT(DISTINCT c.id) as comment_count
+          FROM posts p
+          JOIN users u ON p.user_id = u.id
+          LEFT JOIN smiles s ON p.id = s.post_id
+          LEFT JOIN comments c ON p.id = c.post_id
+          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+          ORDER BY p.created_at DESC LIMIT 50
+        `);
+      }
+    } else if (category) {
+      result = await pool.query(`
+          SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
             COUNT(DISTINCT s.id) as smile_count,
             COUNT(DISTINCT c.id) as comment_count
           FROM posts p
@@ -258,20 +292,22 @@ fastify.get('/posts', async (request, reply) => {
           LEFT JOIN smiles s ON p.id = s.post_id
           LEFT JOIN comments c ON p.id = c.post_id
           WHERE LOWER(p.category) = LOWER($1)
-          GROUP BY p.id, u.name, u.handle, u.avatar_url
+          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
           ORDER BY p.created_at DESC
-        `, [category])
-      : await pool.query(`
-          SELECT p.*, u.name, u.handle, u.avatar_url,
+        `, [category]);
+    } else {
+      result = await pool.query(`
+          SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
             COUNT(DISTINCT s.id) as smile_count,
             COUNT(DISTINCT c.id) as comment_count
           FROM posts p
           JOIN users u ON p.user_id = u.id
           LEFT JOIN smiles s ON p.id = s.post_id
           LEFT JOIN comments c ON p.id = c.post_id
-          GROUP BY p.id, u.name, u.handle, u.avatar_url
+          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
           ORDER BY p.created_at DESC
         `);
+    }
     return { success: true, posts: result.rows };
   } catch (err) {
     fastify.log.error(err);
@@ -338,6 +374,42 @@ fastify.post('/posts/:id/comment', async (request, reply) => {
       }
     }
     return { success: true, comment: result.rows[0] };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// GET /profile/me/interests
+fastify.get('/profile/me/interests', async (request, reply) => {
+  try {
+    await request.jwtVerify();
+  } catch (err) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+  try {
+    const result = await pool.query('SELECT interests FROM users WHERE id = $1', [request.user.id]);
+    return { success: true, interests: result.rows[0]?.interests ?? [] };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// PUT /profile/me/interests
+fastify.put('/profile/me/interests', async (request, reply) => {
+  try {
+    await request.jwtVerify();
+  } catch (err) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+  const { interests } = request.body;
+  if (!Array.isArray(interests) || interests.length < 3) {
+    return reply.status(400).send({ error: 'Select at least 3 interests' });
+  }
+  try {
+    await pool.query('UPDATE users SET interests = $1 WHERE id = $2', [interests, request.user.id]);
+    return { success: true };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: err.message });
