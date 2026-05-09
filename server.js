@@ -82,7 +82,7 @@ fastify.post('/auth/login', async (request, reply) => {
       return reply.status(401).send({ error: 'Incorrect password' });
     }
     const token = fastify.jwt.sign({ id: user.id, email: user.email, handle: user.handle });
-    return { success: true, token, user: { id: user.id, name: user.name, email: user.email, handle: user.handle } };
+    return { success: true, token, user: { id: user.id, name: user.name, email: user.email, handle: user.handle, onboarded: user.onboarded ?? false } };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Server error' });
@@ -246,12 +246,35 @@ fastify.post('/posts', async (request, reply) => {
 });
 
 fastify.get('/posts', async (request, reply) => {
-  const { category, mood, since } = request.query;
+  const { category, mood, since, following } = request.query;
   const sinceDate = since ? new Date(since) : null;
   const sinceValid = sinceDate && !isNaN(sinceDate.getTime());
   try {
     let result;
-    if (mood === 'true') {
+    if (following === 'true') {
+      let userId = null;
+      try { await request.jwtVerify(); userId = request.user.id; } catch {}
+      if (userId) {
+        const params = [userId];
+        if (sinceValid) params.push(sinceDate.toISOString());
+        result = await pool.query(`
+          SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
+            COUNT(DISTINCT s.id) as smile_count,
+            COUNT(DISTINCT c.id) as comment_count
+          FROM posts p
+          JOIN users u ON p.user_id = u.id
+          LEFT JOIN smiles s ON p.id = s.post_id
+          LEFT JOIN comments c ON p.id = c.post_id
+          WHERE p.user_id IN (SELECT following_id FROM follows WHERE follower_id = $1)
+          ${sinceValid ? 'AND p.created_at > $2::timestamptz' : ''}
+          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+          ORDER BY p.created_at DESC
+          LIMIT 100
+        `, params);
+      } else {
+        result = { rows: [] };
+      }
+    } else if (mood === 'true') {
       // For You feed — filter by authenticated user's interests
       let userId = null;
       try { await request.jwtVerify(); userId = request.user.id; } catch {}
@@ -333,10 +356,12 @@ fastify.post('/posts/:id/smile', async (request, reply) => {
     return reply.status(401).send({ error: 'Unauthorized' });
   }
   try {
-    await pool.query(
-      'INSERT INTO smiles (user_id, post_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-      [request.user.id, id]
-    );
+    const existing = await pool.query('SELECT id FROM smiles WHERE user_id = $1 AND post_id = $2', [request.user.id, id]);
+    if (existing.rows.length > 0) {
+      await pool.query('DELETE FROM smiles WHERE user_id = $1 AND post_id = $2', [request.user.id, id]);
+      return { success: true, action: 'removed' };
+    }
+    await pool.query('INSERT INTO smiles (user_id, post_id) VALUES ($1, $2)', [request.user.id, id]);
     const post = await pool.query('SELECT user_id FROM posts WHERE id = $1', [id]);
     if (post.rows.length > 0 && post.rows[0].user_id !== request.user.id) {
       await pool.query(
@@ -350,6 +375,26 @@ fastify.post('/posts/:id/smile', async (request, reply) => {
         await sendPush(owner.rows[0].push_token, 'Happ-E', `${actorName} smiled at your post 😊`, { type: 'smile', postId: String(id) });
       }
     }
+    return { success: true, action: 'added' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.delete('/posts/:id', async (request, reply) => {
+  const { id } = request.params;
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const post = await pool.query('SELECT user_id FROM posts WHERE id = $1', [id]);
+    if (post.rows.length === 0) return reply.status(404).send({ error: 'Post not found' });
+    if (String(post.rows[0].user_id) !== String(request.user.id)) {
+      return reply.status(403).send({ error: 'Not your post' });
+    }
+    await pool.query('DELETE FROM notifications WHERE post_id = $1', [id]);
+    await pool.query('DELETE FROM smiles WHERE post_id = $1', [id]);
+    await pool.query('DELETE FROM comments WHERE post_id = $1', [id]);
+    await pool.query('DELETE FROM posts WHERE id = $1', [id]);
     return { success: true };
   } catch (err) {
     fastify.log.error(err);
@@ -626,6 +671,100 @@ fastify.post('/notifications/read-all', async (request, reply) => {
   }
 });
 
+// --- Messages ---
+
+fastify.get('/messages', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const userId = request.user.id;
+    const result = await pool.query(`
+      SELECT DISTINCT ON (partner_id)
+        CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END as partner_id,
+        m.text as last_message,
+        m.created_at as last_at,
+        m.sender_id,
+        u.name, u.handle, u.avatar_url
+      FROM messages m
+      JOIN users u ON u.id = (CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END)
+      WHERE m.sender_id = $1 OR m.receiver_id = $1
+      ORDER BY partner_id, m.created_at DESC
+    `, [userId]);
+    const unread = await pool.query(
+      'SELECT sender_id as partner_id, COUNT(*) as count FROM messages WHERE receiver_id = $1 AND NOT read GROUP BY sender_id',
+      [userId]
+    );
+    const unreadMap = {};
+    unread.rows.forEach(r => { unreadMap[r.partner_id] = parseInt(r.count); });
+    const conversations = result.rows
+      .map(r => ({ ...r, unread: unreadMap[r.partner_id] ?? 0 }))
+      .sort((a, b) => new Date(b.last_at) - new Date(a.last_at));
+    return { success: true, conversations };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.get('/messages/:userId', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const me = request.user.id;
+    const other = request.params.userId;
+    const result = await pool.query(`
+      SELECT m.id, m.sender_id, m.receiver_id, m.text, m.created_at, m.read,
+        s.name as sender_name, s.handle as sender_handle, s.avatar_url as sender_avatar
+      FROM messages m
+      JOIN users s ON m.sender_id = s.id
+      WHERE (m.sender_id = $1 AND m.receiver_id = $2) OR (m.sender_id = $2 AND m.receiver_id = $1)
+      ORDER BY m.created_at ASC
+      LIMIT 200
+    `, [me, other]);
+    return { success: true, messages: result.rows };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.post('/messages/:userId', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const me = request.user.id;
+    const other = request.params.userId;
+    const { text } = request.body;
+    if (!text?.trim()) return reply.status(400).send({ error: 'Message text required' });
+    const result = await pool.query(
+      'INSERT INTO messages (sender_id, receiver_id, text) VALUES ($1, $2, $3) RETURNING *',
+      [me, other, text.trim()]
+    );
+    const [sender, receiver] = await Promise.all([
+      pool.query('SELECT name FROM users WHERE id = $1', [me]),
+      pool.query('SELECT push_token FROM users WHERE id = $1', [other]),
+    ]);
+    if (receiver.rows[0]?.push_token) {
+      await sendPush(receiver.rows[0].push_token, sender.rows[0]?.name ?? 'Someone', text.trim(), { type: 'message', userId: String(me) });
+    }
+    return { success: true, message: result.rows[0] };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.post('/messages/:userId/read', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    await pool.query(
+      'UPDATE messages SET read = true WHERE sender_id = $1 AND receiver_id = $2 AND NOT read',
+      [request.params.userId, request.user.id]
+    );
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
 // --- Sparks ---
 
 const SPARK_PROMPTS = [
@@ -776,6 +915,18 @@ const initDB = async () => {
     );
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id SERIAL PRIMARY KEY,
+      sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      receiver_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      text TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      read BOOLEAN DEFAULT false
+    );
+    CREATE INDEX IF NOT EXISTS idx_messages_participants ON messages(sender_id, receiver_id);
+    CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id, read);
+  `);
   console.log('Database ready');
 };
 
