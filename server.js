@@ -246,7 +246,9 @@ fastify.post('/posts', async (request, reply) => {
 });
 
 fastify.get('/posts', async (request, reply) => {
-  const { category, mood } = request.query;
+  const { category, mood, since } = request.query;
+  const sinceDate = since ? new Date(since) : null;
+  const sinceValid = sinceDate && !isNaN(sinceDate.getTime());
   try {
     let result;
     if (mood === 'true') {
@@ -254,6 +256,8 @@ fastify.get('/posts', async (request, reply) => {
       let userId = null;
       try { await request.jwtVerify(); userId = request.user.id; } catch {}
       if (userId) {
+        const params = [userId];
+        if (sinceValid) params.push(sinceDate.toISOString());
         result = await pool.query(`
           SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
             COUNT(DISTINCT s.id) as smile_count,
@@ -264,12 +268,13 @@ fastify.get('/posts', async (request, reply) => {
           LEFT JOIN comments c ON p.id = c.post_id
           WHERE p.category = ANY(
             SELECT unnest(interests) FROM users WHERE id = $1
-          )
+          )${sinceValid ? ' AND p.created_at > $2::timestamptz' : ''}
           GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
           ORDER BY p.created_at DESC
           LIMIT 100
-        `, [userId]);
+        `, params);
       } else {
+        const params = sinceValid ? [sinceDate.toISOString()] : [];
         result = await pool.query(`
           SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
             COUNT(DISTINCT s.id) as smile_count,
@@ -278,11 +283,14 @@ fastify.get('/posts', async (request, reply) => {
           JOIN users u ON p.user_id = u.id
           LEFT JOIN smiles s ON p.id = s.post_id
           LEFT JOIN comments c ON p.id = c.post_id
+          ${sinceValid ? 'WHERE p.created_at > $1::timestamptz' : ''}
           GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
           ORDER BY p.created_at DESC LIMIT 50
-        `);
+        `, params);
       }
     } else if (category) {
+      const params = [category];
+      if (sinceValid) params.push(sinceDate.toISOString());
       result = await pool.query(`
           SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
             COUNT(DISTINCT s.id) as smile_count,
@@ -291,11 +299,12 @@ fastify.get('/posts', async (request, reply) => {
           JOIN users u ON p.user_id = u.id
           LEFT JOIN smiles s ON p.id = s.post_id
           LEFT JOIN comments c ON p.id = c.post_id
-          WHERE LOWER(p.category) = LOWER($1)
+          WHERE LOWER(p.category) = LOWER($1)${sinceValid ? ' AND p.created_at > $2::timestamptz' : ''}
           GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
           ORDER BY p.created_at DESC
-        `, [category]);
+        `, params);
     } else {
+      const params = sinceValid ? [sinceDate.toISOString()] : [];
       result = await pool.query(`
           SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
             COUNT(DISTINCT s.id) as smile_count,
@@ -304,9 +313,10 @@ fastify.get('/posts', async (request, reply) => {
           JOIN users u ON p.user_id = u.id
           LEFT JOIN smiles s ON p.id = s.post_id
           LEFT JOIN comments c ON p.id = c.post_id
+          ${sinceValid ? 'WHERE p.created_at > $1::timestamptz' : ''}
           GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
           ORDER BY p.created_at DESC
-        `);
+        `, params);
     }
     return { success: true, posts: result.rows };
   } catch (err) {
@@ -765,6 +775,7 @@ const initDB = async () => {
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);`);
   console.log('Database ready');
 };
 
