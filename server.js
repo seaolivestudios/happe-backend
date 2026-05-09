@@ -279,7 +279,7 @@ fastify.get('/posts/:id', async (request, reply) => {
     `, [id]);
     if (result.rows.length === 0) return reply.status(404).send({ error: 'Post not found' });
     const comments = await pool.query(`
-      SELECT c.text, c.created_at, u.name, u.handle, u.avatar_url
+      SELECT c.id, c.user_id, c.text, c.created_at, u.name, u.handle, u.avatar_url
       FROM comments c
       JOIN users u ON c.user_id = u.id
       WHERE c.post_id = $1
@@ -797,20 +797,35 @@ fastify.post('/messages/:userId', async (request, reply) => {
   try {
     const me = request.user.id;
     const other = request.params.userId;
-    const { text } = request.body;
-    if (!text?.trim()) return reply.status(400).send({ error: 'Message text required' });
+    const { text, gif_url } = request.body;
+    if (!text?.trim() && !gif_url) return reply.status(400).send({ error: 'Message text or gif required' });
     const result = await pool.query(
-      'INSERT INTO messages (sender_id, receiver_id, text) VALUES ($1, $2, $3) RETURNING *',
-      [me, other, text.trim()]
+      'INSERT INTO messages (sender_id, receiver_id, text, gif_url) VALUES ($1, $2, $3, $4) RETURNING *',
+      [me, other, text?.trim() ?? '', gif_url ?? null]
     );
     const [sender, receiver] = await Promise.all([
       pool.query('SELECT name FROM users WHERE id = $1', [me]),
       pool.query('SELECT push_token FROM users WHERE id = $1', [other]),
     ]);
     if (receiver.rows[0]?.push_token) {
-      await sendPush(receiver.rows[0].push_token, sender.rows[0]?.name ?? 'Someone', text.trim(), { type: 'message', userId: String(me) });
+      const preview = gif_url ? 'Sent a GIF' : (text?.trim() ?? '');
+      await sendPush(receiver.rows[0].push_token, sender.rows[0]?.name ?? 'Someone', preview, { type: 'message', userId: String(me) });
     }
     return { success: true, message: result.rows[0] };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.get('/messages/unread-count', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const result = await pool.query(
+      'SELECT COUNT(*) FROM messages WHERE receiver_id = $1 AND NOT read',
+      [request.user.id]
+    );
+    return { success: true, count: parseInt(result.rows[0].count) || 0 };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: err.message });
@@ -823,6 +838,53 @@ fastify.post('/messages/:userId/read', async (request, reply) => {
     await pool.query(
       'UPDATE messages SET read = true WHERE sender_id = $1 AND receiver_id = $2 AND NOT read',
       [request.params.userId, request.user.id]
+    );
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// --- Comment deletion ---
+
+fastify.delete('/posts/:postId/comments/:commentId', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { postId, commentId } = request.params;
+  try {
+    const check = await pool.query('SELECT user_id FROM comments WHERE id = $1 AND post_id = $2', [commentId, postId]);
+    if (check.rows.length === 0) return reply.status(404).send({ error: 'Comment not found' });
+    if (String(check.rows[0].user_id) !== String(request.user.id)) return reply.status(403).send({ error: 'Forbidden' });
+    await pool.query('DELETE FROM comments WHERE id = $1', [commentId]);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// --- Post reporting ---
+
+fastify.post('/posts/:id/report', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { reason } = request.body;
+  try {
+    await pool.query(
+      'INSERT INTO reports (reporter_id, post_id, reason) VALUES ($1, $2, $3) ON CONFLICT (reporter_id, post_id) DO UPDATE SET reason = EXCLUDED.reason',
+      [request.user.id, request.params.id, reason ?? 'unspecified']
+    );
+    const [reporter, post] = await Promise.all([
+      pool.query('SELECT name, email FROM users WHERE id = $1', [request.user.id]),
+      pool.query('SELECT p.text, p.image_url, u.name as author FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = $1', [request.params.id]),
+    ]);
+    await sendEmail(
+      'oops@happe.com',
+      `Post reported — ${reason ?? 'unspecified'}`,
+      `<p><b>Reported by:</b> ${reporter.rows[0]?.name} (${reporter.rows[0]?.email})</p>
+       <p><b>Post author:</b> ${post.rows[0]?.author}</p>
+       <p><b>Post text:</b> ${post.rows[0]?.text ?? '(no text)'}</p>
+       <p><b>Reason:</b> ${reason ?? 'unspecified'}</p>
+       <p><b>Post ID:</b> ${request.params.id}</p>`
     );
     return { success: true };
   } catch (err) {
@@ -1097,6 +1159,16 @@ const initDB = async () => {
     );
   `);
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS reports (
+      id SERIAL PRIMARY KEY,
+      reporter_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+      reason TEXT NOT NULL DEFAULT 'unspecified',
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(reporter_id, post_id)
+    );
+  `);
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS messages (
       id SERIAL PRIMARY KEY,
       sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -1108,6 +1180,7 @@ const initDB = async () => {
     CREATE INDEX IF NOT EXISTS idx_messages_participants ON messages(sender_id, receiver_id);
     CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id, read);
   `);
+  await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS gif_url TEXT DEFAULT NULL;`);
   console.log('Database ready');
 };
 
