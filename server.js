@@ -7,6 +7,19 @@ const cors = require('@fastify/cors');
 const jwt = require('@fastify/jwt');
 const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
+const nodemailer = require('nodemailer');
+
+const emailTransporter = (process.env.EMAIL_USER && process.env.EMAIL_PASS)
+  ? nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } })
+  : null;
+
+async function sendEmail(to, subject, html) {
+  if (emailTransporter) {
+    await emailTransporter.sendMail({ from: `Happ-E <${process.env.EMAIL_USER}>`, to, subject, html });
+  } else {
+    console.log(`[EMAIL - no transport configured] To: ${to} | ${subject} | ${html}`);
+  }
+}
 
 const pool = new Pool({
   host: process.env.PGHOST,
@@ -144,6 +157,44 @@ fastify.delete('/auth/account', async (request, reply) => {
   }
 });
 
+fastify.post('/auth/forgot-password', async (request, reply) => {
+  const { email } = request.body;
+  if (!email) return reply.status(400).send({ error: 'Email required' });
+  try {
+    const result = await pool.query('SELECT id, name FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+    if (result.rows.length === 0) return { success: true };
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
+    await pool.query('UPDATE users SET password_reset_token = $1, password_reset_expires = $2 WHERE id = $3', [code, expires, result.rows[0].id]);
+    await sendEmail(email, 'Your Happ-E password reset code',
+      `<p>Hi ${result.rows[0].name},</p><p>Your password reset code is: <strong>${code}</strong></p><p>This code expires in 15 minutes. If you didn't request this, ignore this email.</p>`
+    );
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Server error' });
+  }
+});
+
+fastify.post('/auth/reset-password', async (request, reply) => {
+  const { email, code, newPassword } = request.body;
+  if (!email || !code || !newPassword) return reply.status(400).send({ error: 'Email, code, and new password required' });
+  if (newPassword.length < 8) return reply.status(400).send({ error: 'Password must be at least 8 characters' });
+  try {
+    const result = await pool.query(
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND password_reset_token = $2 AND password_reset_expires > NOW()',
+      [email, code]
+    );
+    if (result.rows.length === 0) return reply.status(400).send({ error: 'Invalid or expired code' });
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password_hash = $1, password_reset_token = NULL, password_reset_expires = NULL WHERE id = $2', [hash, result.rows[0].id]);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Server error' });
+  }
+});
+
 // GET /profile/me
 fastify.get('/profile/me', async (request, reply) => {
   try {
@@ -184,8 +235,23 @@ fastify.put('/profile/me', async (request, reply) => {
   } catch (err) {
     return reply.status(401).send({ error: 'Unauthorized' });
   }
-  const { name, bio, category, location, website, avatar_url } = request.body;
+  const { name, bio, category, location, website, avatar_url, handle } = request.body;
   try {
+    if (handle) {
+      const normalized = handle.startsWith('@') ? handle : `@${handle}`;
+      const conflict = await pool.query(
+        'SELECT id FROM users WHERE LOWER(handle) = LOWER($1) AND id != $2',
+        [normalized, request.user.id]
+      );
+      if (conflict.rows.length > 0) {
+        return reply.status(400).send({ error: 'Handle already taken' });
+      }
+      const result = await pool.query(
+        'UPDATE users SET name = $1, bio = $2, category = $3, location = $4, website = $5, avatar_url = COALESCE($6, avatar_url), handle = $7 WHERE id = $8 RETURNING id, name, email, handle, bio, category, location, website, avatar_url',
+        [name, bio, category, location, website, avatar_url ?? null, normalized, request.user.id]
+      );
+      return { success: true, user: result.rows[0] };
+    }
     const result = await pool.query(
       'UPDATE users SET name = $1, bio = $2, category = $3, location = $4, website = $5, avatar_url = COALESCE($6, avatar_url) WHERE id = $7 RETURNING id, name, email, handle, bio, category, location, website, avatar_url',
       [name, bio, category, location, website, avatar_url ?? null, request.user.id]
@@ -765,6 +831,109 @@ fastify.post('/messages/:userId/read', async (request, reply) => {
   }
 });
 
+// --- Blocked users ---
+
+fastify.post('/users/:id/block', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const blockedId = parseInt(request.params.id);
+  if (blockedId === request.user.id) return reply.status(400).send({ error: 'Cannot block yourself' });
+  try {
+    await pool.query(
+      'INSERT INTO blocked_users (blocker_id, blocked_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [request.user.id, blockedId]
+    );
+    await pool.query('DELETE FROM follows WHERE (follower_id = $1 AND following_id = $2) OR (follower_id = $2 AND following_id = $1)', [request.user.id, blockedId]);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.delete('/users/:id/block', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    await pool.query('DELETE FROM blocked_users WHERE blocker_id = $1 AND blocked_id = $2', [request.user.id, parseInt(request.params.id)]);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.get('/users/blocked', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const result = await pool.query(
+      `SELECT u.id, u.name, u.handle, u.avatar_url FROM blocked_users b JOIN users u ON b.blocked_id = u.id WHERE b.blocker_id = $1 ORDER BY b.created_at DESC`,
+      [request.user.id]
+    );
+    return { success: true, blocked: result.rows };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// --- Notification preferences ---
+
+fastify.put('/profile/me/notifications', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { push, inspire, comments, likes } = request.body;
+  try {
+    const prefs = { push: !!push, inspire: !!inspire, comments: !!comments, likes: !!likes };
+    await pool.query('UPDATE users SET notification_preferences = $1::jsonb WHERE id = $2', [JSON.stringify(prefs), request.user.id]);
+    return { success: true, preferences: prefs };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// --- Post editing ---
+
+fastify.put('/posts/:id', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { text } = request.body;
+  try {
+    const check = await pool.query('SELECT user_id FROM posts WHERE id = $1', [request.params.id]);
+    if (check.rows.length === 0) return reply.status(404).send({ error: 'Post not found' });
+    if (String(check.rows[0].user_id) !== String(request.user.id)) return reply.status(403).send({ error: 'Forbidden' });
+    const result = await pool.query('UPDATE posts SET text = $1 WHERE id = $2 RETURNING *', [text, request.params.id]);
+    return { success: true, post: result.rows[0] };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// --- Post search ---
+
+fastify.get('/posts/search', async (request, reply) => {
+  const { q } = request.query;
+  if (!q || q.trim().length === 0) return { success: true, posts: [] };
+  const term = `%${q.trim().toLowerCase()}%`;
+  try {
+    const result = await pool.query(
+      `SELECT p.id, p.type, p.text, p.image_url, p.video_url, p.created_at,
+              u.id as user_id, u.name, u.handle, u.avatar_url,
+              COUNT(DISTINCT s.id) as smile_count
+       FROM posts p
+       JOIN users u ON p.user_id = u.id
+       LEFT JOIN smiles s ON p.id = s.post_id
+       WHERE LOWER(p.text) LIKE $1
+       GROUP BY p.id, u.id, u.name, u.handle, u.avatar_url
+       ORDER BY p.created_at DESC
+       LIMIT 30`,
+      [term]
+    );
+    return { success: true, posts: result.rows };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
 // --- Sparks ---
 
 const SPARK_PROMPTS = [
@@ -915,6 +1084,18 @@ const initDB = async () => {
     );
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(10) DEFAULT NULL;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP DEFAULT NULL;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_preferences JSONB DEFAULT '{"push":true,"inspire":true,"comments":true,"likes":true}'::jsonb;`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS blocked_users (
+      id SERIAL PRIMARY KEY,
+      blocker_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      blocked_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(blocker_id, blocked_id)
+    );
+  `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS messages (
       id SERIAL PRIMARY KEY,
