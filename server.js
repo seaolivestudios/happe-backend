@@ -312,102 +312,117 @@ fastify.post('/posts', async (request, reply) => {
 });
 
 fastify.get('/posts', async (request, reply) => {
-  const { category, mood, since, following } = request.query;
+  const { category, mood, since, following, trending, cursor, limit: limitStr } = request.query;
   const sinceDate = since ? new Date(since) : null;
   const sinceValid = sinceDate && !isNaN(sinceDate.getTime());
+  const limit = Math.min(parseInt(limitStr) || 20, 50);
+  const cursorId = cursor ? parseInt(cursor) : null;
+
+  // shared SELECT fragment
+  const SELECT = `SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
+    COUNT(DISTINCT s.id) as smile_count,
+    COUNT(DISTINCT c.id) as comment_count
+  FROM posts p
+  JOIN users u ON p.user_id = u.id
+  LEFT JOIN smiles s ON p.id = s.post_id
+  LEFT JOIN comments c ON p.id = c.post_id`;
+
   try {
     let result;
-    if (following === 'true') {
+
+    if (trending === 'true') {
+      const params = cursorId ? [limit + 1, cursorId] : [limit + 1];
+      result = await pool.query(`
+        ${SELECT}
+        ${cursorId ? 'WHERE p.id < $2' : ''}
+        GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+        ORDER BY (
+          (COUNT(DISTINCT s.id) * 2 + COUNT(DISTINCT c.id)) /
+          POWER(EXTRACT(EPOCH FROM (NOW() - p.created_at)) / 3600.0 + 2, 1.8)
+        ) DESC, p.created_at DESC
+        LIMIT $1
+      `, params);
+    } else if (following === 'true') {
       let userId = null;
       try { await request.jwtVerify(); userId = request.user.id; } catch {}
       if (userId) {
         const params = [userId];
         if (sinceValid) params.push(sinceDate.toISOString());
+        if (cursorId) params.push(cursorId);
+        params.push(limit + 1);
         result = await pool.query(`
-          SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
-            COUNT(DISTINCT s.id) as smile_count,
-            COUNT(DISTINCT c.id) as comment_count
-          FROM posts p
-          JOIN users u ON p.user_id = u.id
-          LEFT JOIN smiles s ON p.id = s.post_id
-          LEFT JOIN comments c ON p.id = c.post_id
+          ${SELECT}
           WHERE p.user_id IN (SELECT following_id FROM follows WHERE follower_id = $1)
-          ${sinceValid ? 'AND p.created_at > $2::timestamptz' : ''}
+          ${sinceValid ? `AND p.created_at > $2::timestamptz` : ''}
+          ${cursorId ? `AND p.id < $${sinceValid ? 3 : 2}` : ''}
           GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
           ORDER BY p.created_at DESC
-          LIMIT 100
+          LIMIT $${params.length}
         `, params);
       } else {
         result = { rows: [] };
       }
     } else if (mood === 'true') {
-      // For You feed — filter by authenticated user's interests
       let userId = null;
       try { await request.jwtVerify(); userId = request.user.id; } catch {}
       if (userId) {
         const params = [userId];
-        if (sinceValid) params.push(sinceDate.toISOString());
+        if (cursorId) params.push(cursorId);
+        params.push(limit + 1);
         result = await pool.query(`
-          SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
-            COUNT(DISTINCT s.id) as smile_count,
-            COUNT(DISTINCT c.id) as comment_count
-          FROM posts p
-          JOIN users u ON p.user_id = u.id
-          LEFT JOIN smiles s ON p.id = s.post_id
-          LEFT JOIN comments c ON p.id = c.post_id
-          WHERE p.category = ANY(
-            SELECT unnest(interests) FROM users WHERE id = $1
-          )${sinceValid ? ' AND p.created_at > $2::timestamptz' : ''}
+          ${SELECT}
+          WHERE p.category = ANY(SELECT unnest(interests) FROM users WHERE id = $1)
+          ${cursorId ? `AND p.id < $2` : ''}
           GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
           ORDER BY p.created_at DESC
-          LIMIT 100
+          LIMIT $${params.length}
         `, params);
       } else {
-        const params = sinceValid ? [sinceDate.toISOString()] : [];
+        const params = cursorId ? [cursorId, limit + 1] : [limit + 1];
         result = await pool.query(`
-          SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
-            COUNT(DISTINCT s.id) as smile_count,
-            COUNT(DISTINCT c.id) as comment_count
-          FROM posts p
-          JOIN users u ON p.user_id = u.id
-          LEFT JOIN smiles s ON p.id = s.post_id
-          LEFT JOIN comments c ON p.id = c.post_id
-          ${sinceValid ? 'WHERE p.created_at > $1::timestamptz' : ''}
+          ${SELECT}
+          ${cursorId ? 'WHERE p.id < $1' : ''}
           GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
-          ORDER BY p.created_at DESC LIMIT 50
+          ORDER BY p.created_at DESC
+          LIMIT $${cursorId ? 2 : 1}
         `, params);
       }
     } else if (category) {
       const params = [category];
-      if (sinceValid) params.push(sinceDate.toISOString());
+      if (cursorId) params.push(cursorId);
+      params.push(limit + 1);
       result = await pool.query(`
-          SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
-            COUNT(DISTINCT s.id) as smile_count,
-            COUNT(DISTINCT c.id) as comment_count
-          FROM posts p
-          JOIN users u ON p.user_id = u.id
-          LEFT JOIN smiles s ON p.id = s.post_id
-          LEFT JOIN comments c ON p.id = c.post_id
-          WHERE LOWER(p.category) = LOWER($1)${sinceValid ? ' AND p.created_at > $2::timestamptz' : ''}
-          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
-          ORDER BY p.created_at DESC
-        `, params);
+        ${SELECT}
+        WHERE LOWER(p.category) = LOWER($1)
+        ${cursorId ? 'AND p.id < $2' : ''}
+        GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+        ORDER BY p.created_at DESC
+        LIMIT $${params.length}
+      `, params);
     } else {
-      const params = sinceValid ? [sinceDate.toISOString()] : [];
+      const params = [];
+      if (sinceValid) params.push(sinceDate.toISOString());
+      if (cursorId) params.push(cursorId);
+      params.push(limit + 1);
+      const whereClause = sinceValid && cursorId
+        ? `WHERE p.created_at > $1::timestamptz AND p.id < $2`
+        : sinceValid ? `WHERE p.created_at > $1::timestamptz`
+        : cursorId ? `WHERE p.id < $1`
+        : '';
       result = await pool.query(`
-          SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
-            COUNT(DISTINCT s.id) as smile_count,
-            COUNT(DISTINCT c.id) as comment_count
-          FROM posts p
-          JOIN users u ON p.user_id = u.id
-          LEFT JOIN smiles s ON p.id = s.post_id
-          LEFT JOIN comments c ON p.id = c.post_id
-          ${sinceValid ? 'WHERE p.created_at > $1::timestamptz' : ''}
-          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
-          ORDER BY p.created_at DESC
-        `, params);
+        ${SELECT}
+        ${whereClause}
+        GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+        ORDER BY p.created_at DESC
+        LIMIT $${params.length}
+      `, params);
     }
-    return { success: true, posts: result.rows };
+
+    const rows = result.rows ?? [];
+    const hasMore = rows.length > limit;
+    const posts = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore && posts.length > 0 ? String(posts[posts.length - 1].id) : null;
+    return { success: true, posts, has_more: hasMore, next_cursor: nextCursor };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Could not fetch posts' });
