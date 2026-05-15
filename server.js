@@ -1196,6 +1196,7 @@ const initDB = async () => {
     CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id, read);
   `);
   await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS gif_url TEXT DEFAULT NULL;`);
+  await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS widescreen BOOLEAN DEFAULT false;`);
   console.log('Database ready');
 };
 
