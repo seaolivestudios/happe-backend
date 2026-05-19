@@ -654,6 +654,24 @@ fastify.delete('/follows/:id', async (request, reply) => {
   }
 });
 
+fastify.get('/follows/following', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const result = await pool.query(
+      `SELECT u.id, u.name, u.handle, u.avatar_url
+       FROM follows f
+       JOIN users u ON u.id = f.following_id
+       WHERE f.follower_id = $1
+       ORDER BY u.name ASC`,
+      [request.user.id]
+    );
+    return { users: result.rows };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
 // --- User search ---
 
 fastify.get('/users/:id', async (request, reply) => {
