@@ -454,6 +454,8 @@ fastify.post('/posts/:id/smile', async (request, reply) => {
     const existing = await pool.query('SELECT id FROM smiles WHERE user_id = $1 AND post_id = $2', [request.user.id, id]);
     if (existing.rows.length > 0) {
       await pool.query('DELETE FROM smiles WHERE user_id = $1 AND post_id = $2', [request.user.id, id]);
+      // Deduct 1 coin for un-smiling (floor at 0)
+      await pool.query('UPDATE users SET coins = GREATEST(coins - 1, 0) WHERE id = $1', [request.user.id]);
       return { success: true, action: 'removed' };
     }
     await pool.query('INSERT INTO smiles (user_id, post_id) VALUES ($1, $2)', [request.user.id, id]);
@@ -483,7 +485,7 @@ fastify.delete('/posts/:id', async (request, reply) => {
   const { id } = request.params;
   try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
   try {
-    const post = await pool.query('SELECT user_id FROM posts WHERE id = $1', [id]);
+    const post = await pool.query('SELECT user_id, created_at, widescreen FROM posts WHERE id = $1', [id]);
     if (post.rows.length === 0) return reply.status(404).send({ error: 'Post not found' });
     if (String(post.rows[0].user_id) !== String(request.user.id)) {
       return reply.status(403).send({ error: 'Not your post' });
@@ -492,6 +494,12 @@ fastify.delete('/posts/:id', async (request, reply) => {
     await pool.query('DELETE FROM smiles WHERE post_id = $1', [id]);
     await pool.query('DELETE FROM comments WHERE post_id = $1', [id]);
     await pool.query('DELETE FROM posts WHERE id = $1', [id]);
+    // Deduct coins if post was created within the last 24 hours
+    const ageMs = Date.now() - new Date(post.rows[0].created_at).getTime();
+    if (ageMs < 24 * 60 * 60 * 1000) {
+      const coinPenalty = post.rows[0].widescreen ? 50 : 10;
+      await pool.query('UPDATE users SET coins = GREATEST(coins - $1, 0) WHERE id = $2', [coinPenalty, request.user.id]);
+    }
     return { success: true };
   } catch (err) {
     fastify.log.error(err);
