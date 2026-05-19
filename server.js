@@ -54,6 +54,17 @@ fastify.get('/', async () => ({
   version: '1.0.0'
 }));
 
+// --- Shop items catalogue ---
+const SHOP_ITEMS = [
+  { id: 'happy_burst',    name: 'Happy Burst',    description: 'The classic happy faces explosion', price: 0,   category: 'effect', icon: 'happy' },
+  { id: 'firework',       name: 'Firework',       description: 'Rockets launch and explode in colour', price: 100, category: 'effect', icon: 'sparkles' },
+  { id: 'sunshine_burst', name: 'Sunshine Burst', description: 'Golden rays radiate like a sunrise', price: 75,  category: 'effect', icon: 'sunny' },
+  { id: 'heart_flutter',  name: 'Heart Flutter',  description: 'Golden hearts float upward',         price: 75,  category: 'effect', icon: 'heart' },
+  { id: 'star_shower',    name: 'Star Shower',    description: 'Stars shoot in all directions',      price: 75,  category: 'effect', icon: 'star' },
+  { id: 'blue_burst',     name: 'Blue Burst',     description: 'Electric blue explosion of energy',  price: 50,  category: 'effect', icon: 'water' },
+  { id: 'red_burst',      name: 'Red Burst',      description: 'Bold red burst of excitement',       price: 50,  category: 'effect', icon: 'flame' },
+];
+
 fastify.post('/auth/register', async (request, reply) => {
   const { name, email, password } = request.body;
   if (!name || !email || !password) {
@@ -204,7 +215,7 @@ fastify.get('/profile/me', async (request, reply) => {
   }
   try {
     const result = await pool.query(
-      'SELECT id, name, email, handle, bio, category, location, website, avatar_url, verified, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, handle, bio, category, location, website, avatar_url, verified, created_at, coins, selected_effect FROM users WHERE id = $1',
       [request.user.id]
     );
     if (result.rows.length === 0) {
@@ -304,6 +315,9 @@ fastify.post('/posts', async (request, reply) => {
       'INSERT INTO posts (user_id, type, text, image_url, video_url, widescreen, author_quote, category) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
       [request.user.id, type, text, image_url, video_url, widescreen || false, author || null, category || null]
     );
+    // Award coins: 50 for widescreen/supportive video, 10 for any other post
+    const coinReward = (widescreen === true || widescreen === 'true') ? 50 : 10;
+    await pool.query('UPDATE users SET coins = coins + $1 WHERE id = $2', [coinReward, request.user.id]);
     return { success: true, post: result.rows[0] };
   } catch (err) {
     fastify.log.error(err);
@@ -456,6 +470,8 @@ fastify.post('/posts/:id/smile', async (request, reply) => {
         await sendPush(owner.rows[0].push_token, 'Happ-E', `${actorName} smiled at your post 😊`, { type: 'smile', postId: String(id) });
       }
     }
+    // Award 1 coin to the smiler
+    await pool.query('UPDATE users SET coins = coins + 1 WHERE id = $1', [request.user.id]);
     return { success: true, action: 'added' };
   } catch (err) {
     fastify.log.error(err);
@@ -509,6 +525,8 @@ fastify.post('/posts/:id/comment', async (request, reply) => {
         await sendPush(owner.rows[0].push_token, 'Happ-E', `${actorName} commented on your post`, { type: 'comment', postId: String(id) });
       }
     }
+    // Award 5 coins to the commenter
+    await pool.query('UPDATE users SET coins = coins + 5 WHERE id = $1', [request.user.id]);
     return { success: true, comment: result.rows[0] };
   } catch (err) {
     fastify.log.error(err);
@@ -666,6 +684,94 @@ fastify.get('/follows/following', async (request, reply) => {
       [request.user.id]
     );
     return { users: result.rows };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// --- Coins & Shop ---
+
+fastify.get('/coins', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const result = await pool.query('SELECT coins, selected_effect FROM users WHERE id = $1', [request.user.id]);
+    return { coins: result.rows[0]?.coins ?? 0, selected_effect: result.rows[0]?.selected_effect ?? 'happy_burst' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.get('/shop/items', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const unlockRes = await pool.query('SELECT item_id FROM user_unlocks WHERE user_id = $1', [request.user.id]);
+    const userRes = await pool.query('SELECT selected_effect FROM users WHERE id = $1', [request.user.id]);
+    const ownedIds = new Set(unlockRes.rows.map(r => r.item_id));
+    ownedIds.add('happy_burst'); // always owned
+    const selected = userRes.rows[0]?.selected_effect ?? 'happy_burst';
+    const items = SHOP_ITEMS.map(item => ({
+      ...item,
+      owned: ownedIds.has(item.id),
+      equipped: item.id === selected,
+    }));
+    return { items };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.post('/shop/purchase/:itemId', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { itemId } = request.params;
+  const item = SHOP_ITEMS.find(i => i.id === itemId);
+  if (!item) return reply.status(404).send({ error: 'Item not found' });
+  if (item.price === 0) return reply.status(400).send({ error: 'Item is free' });
+  try {
+    const userRes = await pool.query('SELECT coins FROM users WHERE id = $1', [request.user.id]);
+    const coins = userRes.rows[0]?.coins ?? 0;
+    if (coins < item.price) return reply.status(400).send({ error: 'Not enough coins' });
+    // Check already owned
+    const existing = await pool.query('SELECT id FROM user_unlocks WHERE user_id = $1 AND item_id = $2', [request.user.id, itemId]);
+    if (existing.rows.length > 0) return reply.status(400).send({ error: 'Already owned' });
+    await pool.query('UPDATE users SET coins = coins - $1 WHERE id = $2', [item.price, request.user.id]);
+    await pool.query('INSERT INTO user_unlocks (user_id, item_id) VALUES ($1, $2)', [request.user.id, itemId]);
+    const updated = await pool.query('SELECT coins FROM users WHERE id = $1', [request.user.id]);
+    return { success: true, coins: updated.rows[0].coins };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.put('/shop/select-effect', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { effectId } = request.body;
+  if (!SHOP_ITEMS.find(i => i.id === effectId)) return reply.status(404).send({ error: 'Effect not found' });
+  try {
+    // Must own it (or be free)
+    const item = SHOP_ITEMS.find(i => i.id === effectId);
+    if (item.price > 0) {
+      const owned = await pool.query('SELECT id FROM user_unlocks WHERE user_id = $1 AND item_id = $2', [request.user.id, effectId]);
+      if (owned.rows.length === 0) return reply.status(403).send({ error: 'Not owned' });
+    }
+    await pool.query('UPDATE users SET selected_effect = $1 WHERE id = $2', [effectId, request.user.id]);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.get('/shop/my-unlocks', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const unlockRes = await pool.query('SELECT item_id FROM user_unlocks WHERE user_id = $1', [request.user.id]);
+    const userRes = await pool.query('SELECT selected_effect FROM users WHERE id = $1', [request.user.id]);
+    const unlocks = ['happy_burst', ...unlockRes.rows.map(r => r.item_id)];
+    return { unlocks, selected_effect: userRes.rows[0]?.selected_effect ?? 'happy_burst' };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: err.message });
@@ -1216,6 +1322,17 @@ const initDB = async () => {
   `);
   await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS gif_url TEXT DEFAULT NULL;`);
   await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS widescreen BOOLEAN DEFAULT false;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS coins INTEGER DEFAULT 0;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS selected_effect VARCHAR(50) DEFAULT 'happy_burst';`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_unlocks (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      item_id VARCHAR(50) NOT NULL,
+      purchased_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, item_id)
+    );
+  `);
   console.log('Database ready');
 };
 
