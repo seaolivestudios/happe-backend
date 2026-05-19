@@ -584,7 +584,7 @@ fastify.get('/profile/me/posts', async (request, reply) => {
   }
   try {
     const result = await pool.query(
-      `SELECT id, type, text, image_url, video_url, created_at,
+      `SELECT posts.id, posts.type, posts.text, posts.image_url, posts.video_url, posts.created_at,
               COUNT(DISTINCT s.id) as smile_count
        FROM posts
        LEFT JOIN smiles s ON posts.id = s.post_id
@@ -668,7 +668,8 @@ fastify.get('/users/:id', async (request, reply) => {
     const followerCount = await pool.query('SELECT COUNT(*) FROM follows WHERE following_id = $1', [id]);
     const followingCount = await pool.query('SELECT COUNT(*) FROM follows WHERE follower_id = $1', [id]);
     const posts = await pool.query(
-      `SELECT id, type, text, image_url, video_url, created_at, COUNT(DISTINCT s.id) as smile_count
+      `SELECT posts.id, posts.type, posts.text, posts.image_url, posts.video_url, posts.created_at,
+              COUNT(DISTINCT s.id) as smile_count
        FROM posts LEFT JOIN smiles s ON posts.id = s.post_id
        WHERE posts.user_id = $1 GROUP BY posts.id ORDER BY posts.created_at DESC`,
       [id]
