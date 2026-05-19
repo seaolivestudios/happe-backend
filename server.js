@@ -1227,6 +1227,22 @@ fastify.post('/sparks/current/respond', async (request, reply) => {
 });
 
 
+// TEMP admin route — will be removed after use
+fastify.post('/admin/give-coins', async (request, reply) => {
+  if (request.headers['x-admin-secret'] !== 'happe-admin-2026') return reply.status(403).send({ error: 'Forbidden' });
+  const { handle, coins } = request.body;
+  try {
+    const result = await pool.query(
+      `UPDATE users SET coins = coins + $1 WHERE LOWER(handle) = LOWER($2) RETURNING id, handle, coins`,
+      [coins, handle]
+    );
+    if (result.rows.length === 0) return reply.status(404).send({ error: 'User not found' });
+    return { success: true, user: result.rows[0] };
+  } catch (err) {
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
 const initDB = async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
