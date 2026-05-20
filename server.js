@@ -304,7 +304,93 @@ const EFFECT_ITEMS = [
   { id: 'red_burst',      name: 'Red Burst',      description: 'Bold red burst of excitement',       price: 50,  category: 'effect', icon: 'flame' },
 ];
 
-const SHOP_ITEMS = [...EFFECT_ITEMS, ...FRAME_ITEMS, ...BADGE_ITEMS, ...HALO_ITEMS];
+// ─── Featured Drops ───────────────────────────────────────────────────────────
+// Limited-time collections. expires_at: null = never expires.
+// Items are also included in SHOP_ITEMS so the purchase flow works normally.
+
+const FEATURED_DROPS = [
+  {
+    id: 'america250',
+    title: "America's 250th",
+    subtitle: 'Limited-time patriotic collection · Expires July 4, 2026',
+    emoji: '🇺🇸',
+    accentColor: '#B22234',
+    expires_at: '2026-07-04T23:59:59Z',
+    items: [
+      // ── Patriotic Profile Frames ──────────────────────────────────────────
+      // Stars & Stripes: Official US flag Old Glory Red / White / Old Glory Blue
+      { id: 'frame_america_stars_split',      name: 'Stars & Stripes Split',    description: 'Red, White & Blue · Split ring',    price: 150, category: 'frame', style: 'split',    colors: ['#B22234','#FFFFFF','#3C3B6E'], featured: true, dropId: 'america250' },
+      { id: 'frame_america_stars_gradient',   name: 'Stars & Stripes Gradient', description: 'Red, White & Blue · Gradient ring', price: 150, category: 'frame', style: 'gradient', colors: ['#B22234','#FFFFFF','#3C3B6E'], featured: true, dropId: 'america250' },
+      // Patriot: Navy / Red / White
+      { id: 'frame_america_patriot_split',    name: 'Patriot Split',            description: 'Navy, Red & White · Split ring',    price: 150, category: 'frame', style: 'split',    colors: ['#3C3B6E','#B22234','#FFFFFF'], featured: true, dropId: 'america250' },
+      { id: 'frame_america_patriot_gradient', name: 'Patriot Gradient',         description: 'Navy, Red & White · Gradient ring', price: 150, category: 'frame', style: 'gradient', colors: ['#3C3B6E','#B22234','#FFFFFF'], featured: true, dropId: 'america250' },
+      // Liberty: Navy / Gold / White (Statue of Liberty torch)
+      { id: 'frame_america_liberty_split',    name: 'Liberty Split',            description: 'Navy, Gold & White · Split ring',    price: 150, category: 'frame', style: 'split',    colors: ['#3C3B6E','#C5A028','#FFFFFF'], featured: true, dropId: 'america250' },
+      { id: 'frame_america_liberty_gradient', name: 'Liberty Gradient',         description: 'Navy, Gold & White · Gradient ring', price: 150, category: 'frame', style: 'gradient', colors: ['#3C3B6E','#C5A028','#FFFFFF'], featured: true, dropId: 'america250' },
+
+      // ── Presidential Quotes ───────────────────────────────────────────────
+      { id: 'badge_america_ask_not',      name: 'Ask not what your country can do for you', price: 75, category: 'badge', genre: 'america_quote', featured: true, dropId: 'america250' },
+      { id: 'badge_america_fear_itself',  name: 'The only thing we have to fear is fear itself', price: 75, category: 'badge', genre: 'america_quote', featured: true, dropId: 'america250' },
+      { id: 'badge_america_malice_none',  name: 'With malice toward none', price: 75, category: 'badge', genre: 'america_quote', featured: true, dropId: 'america250' },
+      { id: 'badge_america_shining_city', name: 'A shining city on a hill', price: 75, category: 'badge', genre: 'america_quote', featured: true, dropId: 'america250' },
+      { id: 'badge_america_pursuit',      name: 'Life, liberty & the pursuit of happiness', price: 75, category: 'badge', genre: 'america_quote', featured: true, dropId: 'america250' },
+      { id: 'badge_america_buck_stops',   name: 'The buck stops here', price: 75, category: 'badge', genre: 'america_quote', featured: true, dropId: 'america250' },
+      { id: 'badge_america_speak_softly', name: 'Speak softly and carry a big stick', price: 75, category: 'badge', genre: 'america_quote', featured: true, dropId: 'america250' },
+      { id: 'badge_america_well_done',    name: 'Well done is better than well said', price: 75, category: 'badge', genre: 'america_quote', featured: true, dropId: 'america250' },
+      { id: 'badge_america_government',   name: 'Government of the people, by the people', price: 75, category: 'badge', genre: 'america_quote', featured: true, dropId: 'america250' },
+      { id: 'badge_america_truth_evident',name: 'We hold these truths to be self-evident', price: 75, category: 'badge', genre: 'america_quote', featured: true, dropId: 'america250' },
+
+      // ── American Spirit Phrases ───────────────────────────────────────────
+      { id: 'badge_america_god_bless',    name: 'God Bless America', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+      { id: 'badge_america_land_free',    name: 'Land of the free, home of the brave', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+      { id: 'badge_america_sea_shine',    name: 'From sea to shining sea', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+      { id: 'badge_america_pluribus',     name: 'E Pluribus Unum · Out of many, one', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+      { id: 'badge_america_let_freedom',  name: 'Let freedom ring', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+      { id: 'badge_america_united',       name: 'United we stand', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+      { id: 'badge_america_dream',        name: 'Living the American Dream', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+      { id: 'badge_america_proud',        name: 'Proud to be an American', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+      { id: 'badge_america_250',          name: '250 years strong 🇺🇸', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+      { id: 'badge_america_sweet_land',   name: 'Sweet land of liberty', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+      { id: 'badge_america_stars_stripes',name: 'Stars & Stripes forever', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+      { id: 'badge_america_in_god',       name: 'In God we trust', price: 75, category: 'badge', genre: 'america_spirit', featured: true, dropId: 'america250' },
+    ],
+  },
+];
+
+// Flatten all featured items into their own array, then merge into SHOP_ITEMS
+const FEATURED_ITEMS = FEATURED_DROPS.flatMap(d => d.items);
+const SHOP_ITEMS = [...EFFECT_ITEMS, ...FRAME_ITEMS, ...BADGE_ITEMS, ...HALO_ITEMS, ...FEATURED_ITEMS];
+
+// ─── Featured endpoint ─────────────────────────────────────────────────────────
+fastify.get('/shop/featured', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  try {
+    const unlockRes = await pool.query('SELECT item_id FROM user_unlocks WHERE user_id = $1', [request.user.id]);
+    const ownedIds  = new Set(unlockRes.rows.map(r => r.item_id));
+    const now       = new Date();
+
+    const drops = FEATURED_DROPS
+      .filter(d => !d.expires_at || new Date(d.expires_at) > now)
+      .map(d => ({
+        id:          d.id,
+        title:       d.title,
+        subtitle:    d.subtitle,
+        emoji:       d.emoji,
+        accentColor: d.accentColor,
+        expires_at:  d.expires_at,
+        items:       d.items.map(item => ({
+          ...item,
+          owned:    ownedIds.has(item.id),
+          equipped: false, // not needed for featured display
+        })),
+      }));
+
+    return { drops };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
 
 fastify.post('/auth/register', async (request, reply) => {
   const { name, email, password } = request.body;
