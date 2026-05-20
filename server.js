@@ -51,11 +51,250 @@ async function sendPush(pushToken, title, body, data = {}) {
 fastify.get('/', async () => ({
   status: 'ok',
   message: 'Happ-E API is running',
-  version: '1.0.0'
+  version: '1.1.0'
 }));
 
 // --- Shop items catalogue ---
-const SHOP_ITEMS = [
+
+const FRAME_TEAMS = {
+  NFL: [
+    {slug:'buffalo',      name:'Bills',       c:['#00338D','#C60C30','#FFFFFF'], div:'AFC East'},
+    {slug:'miami',        name:'Dolphins',    c:['#008E97','#FC4C02','#FFFFFF'], div:'AFC East'},
+    {slug:'newengland',   name:'Patriots',    c:['#002244','#C60C30','#B0B7BC'], div:'AFC East'},
+    {slug:'nyj',          name:'Jets',        c:['#125740','#000000','#FFFFFF'], div:'AFC East'},
+    {slug:'baltimore',    name:'Ravens',      c:['#241773','#000000','#9E7C0C'], div:'AFC North'},
+    {slug:'cincinnati',   name:'Bengals',     c:['#FB4F14','#000000','#FFFFFF'], div:'AFC North'},
+    {slug:'cleveland',    name:'Browns',      c:['#311D00','#FF3C00','#FFFFFF'], div:'AFC North'},
+    {slug:'pittsburgh',   name:'Steelers',    c:['#101820','#FFB612','#C60C30'], div:'AFC North'},
+    {slug:'houston',      name:'Texans',      c:['#03202F','#A71930','#FFFFFF'], div:'AFC South'},
+    {slug:'indianapolis', name:'Colts',       c:['#002C5F','#A2AAAD','#FFFFFF'], div:'AFC South'},
+    {slug:'jacksonville', name:'Jaguars',     c:['#101820','#D7A22A','#006778'], div:'AFC South'},
+    {slug:'tennessee',    name:'Titans',      c:['#0C2340','#4B92DB','#C8102E'], div:'AFC South'},
+    {slug:'denver',       name:'Broncos',     c:['#FB4F14','#002244','#FFFFFF'], div:'AFC West'},
+    {slug:'kansascity',   name:'Chiefs',      c:['#E31837','#FFB81C','#FFFFFF'], div:'AFC West'},
+    {slug:'lasvegas',     name:'Raiders',     c:['#000000','#A5ACAF','#FFFFFF'], div:'AFC West'},
+    {slug:'lachargers',   name:'Chargers',    c:['#002A5E','#FFC20E','#FFFFFF'], div:'AFC West'},
+    {slug:'dallas',       name:'Cowboys',     c:['#003594','#041E42','#869397'], div:'NFC East'},
+    {slug:'nygiants',     name:'Giants',      c:['#0B2265','#A71930','#FFFFFF'], div:'NFC East'},
+    {slug:'philadelphia', name:'Eagles',      c:['#004C54','#A5ACAF','#ACC0C6'], div:'NFC East'},
+    {slug:'washington',   name:'Commanders',  c:['#5A1414','#FFB612','#FFFFFF'], div:'NFC East'},
+    {slug:'chicago',      name:'Bears',       c:['#0B162A','#C83803','#FFFFFF'], div:'NFC North'},
+    {slug:'detroit',      name:'Lions',       c:['#0076B6','#B0B7BC','#FFFFFF'], div:'NFC North'},
+    {slug:'greenbay',     name:'Packers',     c:['#203731','#FFB612','#FFFFFF'], div:'NFC North'},
+    {slug:'minnesota',    name:'Vikings',     c:['#4F2683','#FFC62F','#FFFFFF'], div:'NFC North'},
+    {slug:'atlanta',      name:'Falcons',     c:['#A71930','#000000','#A5ACAF'], div:'NFC South'},
+    {slug:'carolina',     name:'Panthers',    c:['#0085CA','#101820','#BFC0BF'], div:'NFC South'},
+    {slug:'neworleans',   name:'Saints',      c:['#D3BC8D','#101820','#FFFFFF'], div:'NFC South'},
+    {slug:'tampabay',     name:'Buccaneers',  c:['#D50A0A','#FF7900','#0A0A08'], div:'NFC South'},
+    {slug:'arizona',      name:'Cardinals',   c:['#97233F','#000000','#FFB612'], div:'NFC West'},
+    {slug:'larams',       name:'Rams',        c:['#003594','#FFA300','#FFFFFF'], div:'NFC West'},
+    {slug:'sanfrancisco', name:'49ers',       c:['#AA0000','#B3995D','#FFFFFF'], div:'NFC West'},
+    {slug:'seattle',      name:'Seahawks',    c:['#002244','#69BE28','#A5ACAF'], div:'NFC West'},
+  ],
+  NBA: [
+    {slug:'atlanta',      name:'Hawks',           c:['#E03A3E','#C1D32F','#FFFFFF']},
+    {slug:'boston',       name:'Celtics',         c:['#007A33','#BA9653','#FFFFFF']},
+    {slug:'brooklyn',     name:'Nets',            c:['#000000','#FFFFFF','#777777']},
+    {slug:'charlotte',    name:'Hornets',         c:['#1D1160','#00788C','#A1A1A4']},
+    {slug:'chicago',      name:'Bulls',           c:['#CE1141','#000000','#FFFFFF']},
+    {slug:'cleveland',    name:'Cavaliers',       c:['#6F263D','#FFB81C','#FFFFFF']},
+    {slug:'dallas',       name:'Mavericks',       c:['#00538C','#002B5E','#B8C4CA']},
+    {slug:'denver',       name:'Nuggets',         c:['#0E2240','#FEC524','#8B2131']},
+    {slug:'detroit',      name:'Pistons',         c:['#C8102E','#006BB6','#BEC0C2']},
+    {slug:'goldenstate',  name:'Warriors',        c:['#1D428A','#FFC72C','#FFFFFF']},
+    {slug:'houston',      name:'Rockets',         c:['#CE1141','#000000','#C4CED4']},
+    {slug:'indiana',      name:'Pacers',          c:['#002D62','#FDBB30','#BEC0C2']},
+    {slug:'laclippers',   name:'Clippers',        c:['#C8102E','#1D428A','#BEC0C2']},
+    {slug:'lalakers',     name:'Lakers',          c:['#552583','#FDB927','#FFFFFF']},
+    {slug:'memphis',      name:'Grizzlies',       c:['#5D76A9','#12173F','#F5B112']},
+    {slug:'miami',        name:'Heat',            c:['#98002E','#F9A01B','#000000']},
+    {slug:'milwaukee',    name:'Bucks',           c:['#00471B','#EEE1C6','#0077C0']},
+    {slug:'minnesota',    name:'Timberwolves',    c:['#0C2340','#236192','#78BE20']},
+    {slug:'neworleans',   name:'Pelicans',        c:['#0C2340','#C8102E','#85714D']},
+    {slug:'nyknicks',     name:'Knicks',          c:['#006BB6','#F58426','#BEC0C2']},
+    {slug:'okc',          name:'Thunder',         c:['#007AC1','#EF3B24','#002D62']},
+    {slug:'orlando',      name:'Magic',           c:['#0077C0','#C4CED4','#000000']},
+    {slug:'philadelphia', name:'76ers',           c:['#006BB6','#ED174C','#002B5C']},
+    {slug:'phoenix',      name:'Suns',            c:['#1D1160','#E56020','#000000']},
+    {slug:'portland',     name:'Trail Blazers',   c:['#E03A3E','#000000','#FFFFFF']},
+    {slug:'sacramento',   name:'Kings',           c:['#5A2D81','#63727A','#FFFFFF']},
+    {slug:'sanantonio',   name:'Spurs',           c:['#C4CED4','#000000','#FFFFFF']},
+    {slug:'toronto',      name:'Raptors',         c:['#CE1141','#000000','#A1A1A4']},
+    {slug:'utah',         name:'Jazz',            c:['#002B5C','#00471B','#F9A01B']},
+    {slug:'washington',   name:'Wizards',         c:['#002B5C','#E31837','#C4CED4']},
+  ],
+  MLB: [
+    {slug:'arizona',      name:'Diamondbacks',    c:['#A71930','#E3D4AD','#000000']},
+    {slug:'atlanta',      name:'Braves',          c:['#CE1141','#13274F','#FFFFFF']},
+    {slug:'baltimore',    name:'Orioles',         c:['#DF4601','#000000','#FFFFFF']},
+    {slug:'boston',       name:'Red Sox',         c:['#BD3039','#0D2B56','#FFFFFF']},
+    {slug:'chicagocubs',  name:'Cubs',            c:['#0E3386','#CC3433','#FFFFFF']},
+    {slug:'chicagowsox',  name:'White Sox',       c:['#27251F','#C4CED4','#FFFFFF']},
+    {slug:'cincinnati',   name:'Reds',            c:['#C6011F','#000000','#FFFFFF']},
+    {slug:'cleveland',    name:'Guardians',       c:['#00385D','#E31937','#FFFFFF']},
+    {slug:'colorado',     name:'Rockies',         c:['#333366','#C4CED4','#000000']},
+    {slug:'detroit',      name:'Tigers',          c:['#0C2C56','#FA4616','#FFFFFF']},
+    {slug:'houston',      name:'Astros',          c:['#002D62','#EB6E1F','#FFFFFF']},
+    {slug:'kansascity',   name:'Royals',          c:['#004687','#BD9B60','#FFFFFF']},
+    {slug:'laangels',     name:'Angels',          c:['#BA0021','#003263','#C4CED4']},
+    {slug:'ladodgers',    name:'Dodgers',         c:['#005A9C','#EF3E42','#FFFFFF']},
+    {slug:'miami',        name:'Marlins',         c:['#00A3E0','#EF3340','#000000']},
+    {slug:'milwaukee',    name:'Brewers',         c:['#FFC52F','#12284B','#FFFFFF']},
+    {slug:'minnesota',    name:'Twins',           c:['#002B5C','#D31145','#CFAB7A']},
+    {slug:'nymets',       name:'Mets',            c:['#002D72','#FF5910','#FFFFFF']},
+    {slug:'nyyankees',    name:'Yankees',         c:['#132448','#C4CED4','#FFFFFF']},
+    {slug:'oakland',      name:'Athletics',       c:['#003831','#EFB21E','#A2AAAD']},
+    {slug:'philadelphia', name:'Phillies',        c:['#E81828','#002D72','#FFFFFF']},
+    {slug:'pittsburgh',   name:'Pirates',         c:['#FDB827','#27251F','#FFFFFF']},
+    {slug:'sandiego',     name:'Padres',          c:['#2F241D','#FFC425','#A0AAB2']},
+    {slug:'sanfrancisco', name:'Giants',          c:['#FD5A1E','#27251F','#EFD19F']},
+    {slug:'seattle',      name:'Mariners',        c:['#0C2C56','#005C5C','#C4CED4']},
+    {slug:'stlouis',      name:'Cardinals',       c:['#C41E3A','#0C2340','#FEDB00']},
+    {slug:'tampabay',     name:'Rays',            c:['#092C5C','#8FBCE6','#F5D130']},
+    {slug:'texas',        name:'Rangers',         c:['#003278','#C0111F','#FFFFFF']},
+    {slug:'toronto',      name:'Blue Jays',       c:['#134A8E','#1D2D5C','#E8291C']},
+    {slug:'washington',   name:'Nationals',       c:['#AB0003','#14225A','#FFFFFF']},
+  ],
+  NHL: [
+    {slug:'anaheim',      name:'Ducks',           c:['#F47A38','#B9975B','#000000']},
+    {slug:'boston',       name:'Bruins',          c:['#FCB514','#000000','#FFFFFF']},
+    {slug:'buffalo',      name:'Sabres',          c:['#003087','#FFB81C','#FFFFFF']},
+    {slug:'calgary',      name:'Flames',          c:['#C8102E','#F1BE48','#000000']},
+    {slug:'carolina',     name:'Hurricanes',      c:['#CC0000','#000000','#A2AAAD']},
+    {slug:'chicago',      name:'Blackhawks',      c:['#CF0A2C','#000000','#FF671B']},
+    {slug:'colorado',     name:'Avalanche',       c:['#6F263D','#236192','#A2AAAD']},
+    {slug:'columbus',     name:'Blue Jackets',    c:['#002654','#CE1126','#A2AAAD']},
+    {slug:'dallas',       name:'Stars',           c:['#006847','#8F8F8C','#000000']},
+    {slug:'detroit',      name:'Red Wings',       c:['#CE1126','#FFFFFF','#000000']},
+    {slug:'edmonton',     name:'Oilers',          c:['#041E42','#FC4C02','#FFFFFF']},
+    {slug:'florida',      name:'Panthers',        c:['#041E42','#C8102E','#B9975B']},
+    {slug:'losangeles',   name:'Kings',           c:['#111111','#A2AAAD','#FFFFFF']},
+    {slug:'minnesota',    name:'Wild',            c:['#154734','#DDAF48','#BF2B37']},
+    {slug:'montreal',     name:'Canadiens',       c:['#AF1E2D','#192168','#FFFFFF']},
+    {slug:'nashville',    name:'Predators',       c:['#FFB81C','#041E42','#FFFFFF']},
+    {slug:'newjersey',    name:'Devils',          c:['#CE1126','#000000','#FFFFFF']},
+    {slug:'nyislanders',  name:'Islanders',       c:['#003087','#FC4C02','#FFFFFF']},
+    {slug:'nyrangers',    name:'Rangers',         c:['#0038A8','#CE1126','#FFFFFF']},
+    {slug:'ottawa',       name:'Senators',        c:['#C52032','#C69214','#000000']},
+    {slug:'philadelphia', name:'Flyers',          c:['#F74902','#000000','#FFFFFF']},
+    {slug:'pittsburgh',   name:'Penguins',        c:['#000000','#CFC493','#FCB514']},
+    {slug:'sanjose',      name:'Sharks',          c:['#006D75','#EA7200','#000000']},
+    {slug:'seattle',      name:'Kraken',          c:['#001628','#99D9D9','#68A2B9']},
+    {slug:'stlouis',      name:'Blues',           c:['#002F87','#FCB514','#FFFFFF']},
+    {slug:'tampabay',     name:'Lightning',       c:['#002868','#FFFFFF','#000000']},
+    {slug:'toronto',      name:'Maple Leafs',     c:['#00205B','#FFFFFF','#A2AAAD']},
+    {slug:'utah',         name:'Hockey Club',     c:['#6CACE4','#010101','#FFFFFF']},
+    {slug:'vancouver',    name:'Canucks',         c:['#00205B','#00843D','#FFFFFF']},
+    {slug:'vegas',        name:'Golden Knights',  c:['#B4975A','#333F42','#000000']},
+    {slug:'washington',   name:'Capitals',        c:['#041E42','#C8102E','#FFFFFF']},
+    {slug:'winnipeg',     name:'Jets',            c:['#041E42','#004C97','#FFFFFF']},
+  ],
+};
+
+// Generate 248 frame items (2 styles × 124 teams)
+const FRAME_ITEMS = [];
+for (const [league, teams] of Object.entries(FRAME_TEAMS)) {
+  for (const team of teams) {
+    const leagueLower = league.toLowerCase();
+    const prefix = `frame_${leagueLower}_${team.slug}`;
+    const divLabel = team.div ? ` · ${team.div}` : '';
+    FRAME_ITEMS.push(
+      { id: `${prefix}_split`,    name: `${team.name} Split`,    description: `${league}${divLabel}`, price: 100, category: 'frame', league, teamSlug: team.slug, style: 'split',    colors: team.c },
+      { id: `${prefix}_gradient`, name: `${team.name} Gradient`, description: `${league}${divLabel}`, price: 100, category: 'frame', league, teamSlug: team.slug, style: 'gradient', colors: team.c }
+    );
+  }
+}
+
+const BADGE_ITEMS = [
+  // Movie Quotes
+  { id: 'badge_movie_ill_be_back',       name: "I'll be back",                  price: 75, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_looking_at_you',    name: "Here's looking at you, kid",    price: 75, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_may_the_force',     name: "May the Force be with you",     price: 75, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_handle_truth',      name: "You can't handle the truth!",   price: 75, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_i_see_dead',        name: "I see dead people",             price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_no_place_home',     name: "There's no place like home",    price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_houston_problem',   name: "Houston, we have a problem",    price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_box_chocolates',    name: "Life is like a box of chocolates", price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_just_keep_swimming',name: "Just keep swimming",            price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_to_infinity',       name: "To infinity and beyond!",       price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_why_so_serious',    name: "Why so serious?",               price: 75, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_you_had_me',        name: "You had me at hello",           price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_king_of_world',     name: "I'm the king of the world!",    price: 75, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_get_to_choppa',     name: "Get to the choppa!",            price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_i_am_groot',        name: "I am Groot",                    price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_this_is_sparta',    name: "This is Sparta!",               price: 75, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_you_is_kind',       name: "You is kind, you is smart",     price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_one_more_thing',    name: "Just one more thing...",        price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_hakuna_matata',     name: "Hakuna matata",                 price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_bigger_boat',       name: "We need a bigger boat",         price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_kind_of_big_deal',  name: "I'm kind of a big deal",        price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_inconceivable',     name: "Inconceivable!",                price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_elementary',        name: "Elementary, my dear Watson",    price: 50, category: 'badge', genre: 'movie' },
+  { id: 'badge_movie_with_great_power',  name: "With great power...",           price: 50, category: 'badge', genre: 'movie' },
+  // Song Lyrics
+  { id: 'badge_lyric_always_love_you',   name: "I will always love you",        price: 75, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_dont_stop',         name: "Don't stop believin'",          price: 75, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_shake_it_off',      name: "Shake it off",                  price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_dancing_queen',     name: "Dancing queen",                 price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_hold_your_hand',    name: "I want to hold your hand",      price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_born_to_run',       name: "Born to run",                   price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_sweet_child',       name: "Sweet child o' mine",           price: 75, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_living_on_prayer',  name: "Livin' on a prayer",            price: 75, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_purple_rain',       name: "Purple rain",                   price: 75, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_good_as_hell',      name: "Good as hell",                  price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_blinding_lights',   name: "Blinding Lights",               price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_as_it_was',         name: "As it was",                     price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_flowers',           name: "Flowers",                       price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_golden_hour',       name: "Golden hour",                   price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_wonderful_world',   name: "What a wonderful world",        price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_dont_worry',        name: "Don't worry, be happy",         price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_here_comes_sun',    name: "Here comes the sun",            price: 75, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_september',         name: "Do you remember September",     price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_lovely_day',        name: "Lovely day",                    price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_happy',             name: "Happy",                         price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_cant_stop_feeling', name: "Can't stop the feeling!",       price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_walking_sunshine',  name: "Walking on sunshine",           price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_good_vibrations',   name: "Good vibrations",               price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_uptown_funk',       name: "Uptown funk",                   price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_stronger',          name: "What doesn't kill you",         price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_roar',              name: "Hear me roar",                  price: 50, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_eye_of_tiger',      name: "Eye of the tiger",              price: 75, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_lose_yourself',     name: "Lose yourself",                 price: 75, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_we_will_rock_you',  name: "We will rock you",              price: 75, category: 'badge', genre: 'lyric' },
+  { id: 'badge_lyric_dont_forget',       name: "Don't you forget about me",     price: 50, category: 'badge', genre: 'lyric' },
+  // Quips
+  { id: 'badge_quip_main_character',     name: "Main character energy",         price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_unbothered',         name: "Unbothered",                    price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_thats_a_vibe',       name: "That's a vibe",                 price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_built_different',    name: "Built different",               price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_no_thoughts_vibes',  name: "No thoughts, just vibes",       price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_best_life',          name: "Living my best life",           price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_soft_life',          name: "Soft life era",                 price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_serotonin',          name: "Serotonin boost",               price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_its_giving',         name: "It's giving everything",        price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_chaotic_good',       name: "Chaotic good",                  price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_certified_legend',   name: "Certified legend",              price: 75, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_in_my_feels',        name: "In my feels",                   price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_plot_twist',         name: "Plot twist: thriving",          price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_delulu',             name: "Delulu but make it work",       price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_the_audacity',       name: "The audacity... I love it",     price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_woke_up',            name: "I woke up like this",           price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_not_average',        name: "Not your average human",        price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_for_the_story',      name: "Doing it for the story",        price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_manifesting',        name: "Manifesting daily",             price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_energy',             name: "Energy is contagious",          price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_zero_regrets',       name: "Zero regrets",                  price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_this_is_the_way',    name: "This is the way",               price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_good_vibes',         name: "Sending good vibes",            price: 50, category: 'badge', genre: 'quip' },
+  { id: 'badge_quip_absolutely',         name: "Absolutely unhinged",           price: 50, category: 'badge', genre: 'quip' },
+];
+
+const HALO_ITEMS = [
+  { id: 'halo_static',   name: 'Static Halo',   description: 'Badge text floats in a full circle around your avatar', price: 150, category: 'halo_style' },
+  { id: 'halo_spinning', name: 'Spinning Halo', description: 'Badge text slowly rotates around your avatar',          price: 250, category: 'halo_style' },
+];
+
+const EFFECT_ITEMS = [
   { id: 'happy_burst',    name: 'Happy Burst',    description: 'The classic happy faces explosion', price: 0,   category: 'effect', icon: 'happy' },
   { id: 'firework',       name: 'Firework',       description: 'Rockets launch and explode in colour', price: 100, category: 'effect', icon: 'sparkles' },
   { id: 'sunshine_burst', name: 'Sunshine Burst', description: 'Golden rays radiate like a sunrise', price: 75,  category: 'effect', icon: 'sunny' },
@@ -64,6 +303,8 @@ const SHOP_ITEMS = [
   { id: 'blue_burst',     name: 'Blue Burst',     description: 'Electric blue explosion of energy',  price: 50,  category: 'effect', icon: 'water' },
   { id: 'red_burst',      name: 'Red Burst',      description: 'Bold red burst of excitement',       price: 50,  category: 'effect', icon: 'flame' },
 ];
+
+const SHOP_ITEMS = [...EFFECT_ITEMS, ...FRAME_ITEMS, ...BADGE_ITEMS, ...HALO_ITEMS];
 
 fastify.post('/auth/register', async (request, reply) => {
   const { name, email, password } = request.body;
@@ -215,7 +456,7 @@ fastify.get('/profile/me', async (request, reply) => {
   }
   try {
     const result = await pool.query(
-      'SELECT id, name, email, handle, bio, category, location, website, avatar_url, verified, created_at, coins, selected_effect FROM users WHERE id = $1',
+      'SELECT id, name, email, handle, bio, category, location, website, avatar_url, verified, created_at, coins, selected_effect, selected_frame, selected_badge, badge_style FROM users WHERE id = $1',
       [request.user.id]
     );
     if (result.rows.length === 0) {
@@ -709,8 +950,18 @@ fastify.get('/follows/following', async (request, reply) => {
 fastify.get('/coins', async (request, reply) => {
   try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
   try {
-    const result = await pool.query('SELECT coins, selected_effect FROM users WHERE id = $1', [request.user.id]);
-    return { coins: result.rows[0]?.coins ?? 0, selected_effect: result.rows[0]?.selected_effect ?? 'happy_burst' };
+    const result = await pool.query(
+      'SELECT coins, selected_effect, selected_frame, selected_badge, badge_style FROM users WHERE id = $1',
+      [request.user.id]
+    );
+    const row = result.rows[0] ?? {};
+    return {
+      coins: row.coins ?? 0,
+      selected_effect: row.selected_effect ?? 'happy_burst',
+      selected_frame: row.selected_frame ?? null,
+      selected_badge: row.selected_badge ?? null,
+      badge_style: row.badge_style ?? 'chip',
+    };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: err.message });
@@ -721,15 +972,26 @@ fastify.get('/shop/items', async (request, reply) => {
   try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
   try {
     const unlockRes = await pool.query('SELECT item_id FROM user_unlocks WHERE user_id = $1', [request.user.id]);
-    const userRes = await pool.query('SELECT selected_effect FROM users WHERE id = $1', [request.user.id]);
+    const userRes = await pool.query(
+      'SELECT selected_effect, selected_frame, selected_badge, badge_style FROM users WHERE id = $1',
+      [request.user.id]
+    );
     const ownedIds = new Set(unlockRes.rows.map(r => r.item_id));
     ownedIds.add('happy_burst'); // always owned
-    const selected = userRes.rows[0]?.selected_effect ?? 'happy_burst';
-    const items = SHOP_ITEMS.map(item => ({
-      ...item,
-      owned: ownedIds.has(item.id),
-      equipped: item.id === selected,
-    }));
+    const u = userRes.rows[0] ?? {};
+    const selectedEffect = u.selected_effect ?? 'happy_burst';
+    const selectedFrame  = u.selected_frame  ?? null;
+    const selectedBadge  = u.selected_badge  ?? null;
+    const badgeStyle     = u.badge_style     ?? 'chip';
+
+    const items = SHOP_ITEMS.map(item => {
+      let equipped = false;
+      if (item.category === 'effect')     equipped = item.id === selectedEffect;
+      if (item.category === 'frame')      equipped = item.id === selectedFrame;
+      if (item.category === 'badge')      equipped = item.id === selectedBadge;
+      if (item.category === 'halo_style') equipped = item.id === badgeStyle;
+      return { ...item, owned: ownedIds.has(item.id), equipped };
+    });
     return { items };
   } catch (err) {
     fastify.log.error(err);
@@ -783,9 +1045,79 @@ fastify.get('/shop/my-unlocks', async (request, reply) => {
   try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
   try {
     const unlockRes = await pool.query('SELECT item_id FROM user_unlocks WHERE user_id = $1', [request.user.id]);
-    const userRes = await pool.query('SELECT selected_effect FROM users WHERE id = $1', [request.user.id]);
+    const userRes = await pool.query(
+      'SELECT selected_effect, selected_frame, selected_badge, badge_style FROM users WHERE id = $1',
+      [request.user.id]
+    );
     const unlocks = ['happy_burst', ...unlockRes.rows.map(r => r.item_id)];
-    return { unlocks, selected_effect: userRes.rows[0]?.selected_effect ?? 'happy_burst' };
+    const u = userRes.rows[0] ?? {};
+    return {
+      unlocks,
+      selected_effect: u.selected_effect ?? 'happy_burst',
+      selected_frame:  u.selected_frame  ?? null,
+      selected_badge:  u.selected_badge  ?? null,
+      badge_style:     u.badge_style     ?? 'chip',
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+// --- New shop select endpoints ---
+
+fastify.put('/shop/select-frame', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { frameId } = request.body;
+  if (frameId !== null && !SHOP_ITEMS.find(i => i.id === frameId && i.category === 'frame')) {
+    return reply.status(404).send({ error: 'Frame not found' });
+  }
+  try {
+    if (frameId !== null) {
+      const owned = await pool.query('SELECT id FROM user_unlocks WHERE user_id = $1 AND item_id = $2', [request.user.id, frameId]);
+      if (owned.rows.length === 0) return reply.status(403).send({ error: 'Not owned' });
+    }
+    await pool.query('UPDATE users SET selected_frame = $1 WHERE id = $2', [frameId, request.user.id]);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.put('/shop/select-badge', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { badgeId } = request.body;
+  if (badgeId !== null && !SHOP_ITEMS.find(i => i.id === badgeId && i.category === 'badge')) {
+    return reply.status(404).send({ error: 'Badge not found' });
+  }
+  try {
+    if (badgeId !== null) {
+      const owned = await pool.query('SELECT id FROM user_unlocks WHERE user_id = $1 AND item_id = $2', [request.user.id, badgeId]);
+      if (owned.rows.length === 0) return reply.status(403).send({ error: 'Not owned' });
+    }
+    await pool.query('UPDATE users SET selected_badge = $1 WHERE id = $2', [badgeId, request.user.id]);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: err.message });
+  }
+});
+
+fastify.put('/shop/select-badge-style', async (request, reply) => {
+  try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
+  const { style } = request.body;
+  if (!['chip', 'halo_static', 'halo_spinning'].includes(style)) {
+    return reply.status(400).send({ error: 'Invalid style' });
+  }
+  try {
+    // halo_static / halo_spinning must be owned
+    if (style !== 'chip') {
+      const owned = await pool.query('SELECT id FROM user_unlocks WHERE user_id = $1 AND item_id = $2', [request.user.id, style]);
+      if (owned.rows.length === 0) return reply.status(403).send({ error: 'Not owned' });
+    }
+    await pool.query('UPDATE users SET badge_style = $1 WHERE id = $2', [style, request.user.id]);
+    return { success: true };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: err.message });
@@ -1354,6 +1686,11 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS widescreen BOOLEAN DEFAULT false;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS coins INTEGER DEFAULT 0;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS selected_effect VARCHAR(50) DEFAULT 'happy_burst';`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS selected_frame VARCHAR(100) DEFAULT NULL;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS selected_badge VARCHAR(100) DEFAULT NULL;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS badge_style VARCHAR(50) DEFAULT 'chip';`);
+  // Ensure @stephen.olmo has at least 5000 coins (idempotent — won't reduce a higher balance)
+  await pool.query(`UPDATE users SET coins = GREATEST(coins, 5000) WHERE LOWER(handle) = '@stephen.olmo';`).catch(() => {});
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_unlocks (
       id SERIAL PRIMARY KEY,
