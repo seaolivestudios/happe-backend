@@ -527,7 +527,7 @@ fastify.get('/posts/:id', async (request, reply) => {
       LEFT JOIN smiles s ON p.id = s.post_id
       LEFT JOIN comments c ON p.id = c.post_id
       WHERE p.id = $1
-      GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+      GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified, u.selected_frame, u.selected_badge, u.badge_style
     `, [id]);
     if (result.rows.length === 0) return reply.status(404).send({ error: 'Post not found' });
     const comments = await pool.query(`
@@ -575,6 +575,7 @@ fastify.get('/posts', async (request, reply) => {
 
   // shared SELECT fragment
   const SELECT = `SELECT p.*, u.name, u.handle, u.avatar_url, u.id as user_id, u.verified,
+    u.selected_frame, u.selected_badge, u.badge_style,
     COUNT(DISTINCT s.id) as smile_count,
     COUNT(DISTINCT c.id) as comment_count
   FROM posts p
@@ -590,7 +591,7 @@ fastify.get('/posts', async (request, reply) => {
       result = await pool.query(`
         ${SELECT}
         ${cursorId ? 'WHERE p.id < $2' : ''}
-        GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+        GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified, u.selected_frame, u.selected_badge, u.badge_style
         ORDER BY (
           (COUNT(DISTINCT s.id) * 2 + COUNT(DISTINCT c.id)) /
           POWER(EXTRACT(EPOCH FROM (NOW() - p.created_at)) / 3600.0 + 2, 1.8)
@@ -610,7 +611,7 @@ fastify.get('/posts', async (request, reply) => {
           WHERE p.user_id IN (SELECT following_id FROM follows WHERE follower_id = $1)
           ${sinceValid ? `AND p.created_at > $2::timestamptz` : ''}
           ${cursorId ? `AND p.id < $${sinceValid ? 3 : 2}` : ''}
-          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified, u.selected_frame, u.selected_badge, u.badge_style
           ORDER BY p.created_at DESC
           LIMIT $${params.length}
         `, params);
@@ -628,7 +629,7 @@ fastify.get('/posts', async (request, reply) => {
           ${SELECT}
           WHERE p.category = ANY(SELECT unnest(interests) FROM users WHERE id = $1)
           ${cursorId ? `AND p.id < $2` : ''}
-          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified, u.selected_frame, u.selected_badge, u.badge_style
           ORDER BY p.created_at DESC
           LIMIT $${params.length}
         `, params);
@@ -637,7 +638,7 @@ fastify.get('/posts', async (request, reply) => {
         result = await pool.query(`
           ${SELECT}
           ${cursorId ? 'WHERE p.id < $1' : ''}
-          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+          GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified, u.selected_frame, u.selected_badge, u.badge_style
           ORDER BY p.created_at DESC
           LIMIT $${cursorId ? 2 : 1}
         `, params);
@@ -650,7 +651,7 @@ fastify.get('/posts', async (request, reply) => {
         ${SELECT}
         WHERE LOWER(p.category) = LOWER($1)
         ${cursorId ? 'AND p.id < $2' : ''}
-        GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+        GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified, u.selected_frame, u.selected_badge, u.badge_style
         ORDER BY p.created_at DESC
         LIMIT $${params.length}
       `, params);
@@ -667,7 +668,7 @@ fastify.get('/posts', async (request, reply) => {
       result = await pool.query(`
         ${SELECT}
         ${whereClause}
-        GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified
+        GROUP BY p.id, u.name, u.handle, u.avatar_url, u.id, u.verified, u.selected_frame, u.selected_badge, u.badge_style
         ORDER BY p.created_at DESC
         LIMIT $${params.length}
       `, params);
