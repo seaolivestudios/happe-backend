@@ -289,6 +289,97 @@ const BADGE_ITEMS = [
   { id: 'badge_quip_absolutely',         name: "Absolutely unhinged",           price: 50, category: 'badge', genre: 'quip' },
 ];
 
+// College teams — solid single-color rings
+const COLLEGE_TEAMS = [
+  // SEC
+  {slug:'alabama',        name:'Alabama',         conf:'SEC',  c:'#9E1B32'},
+  {slug:'georgia',        name:'Georgia',         conf:'SEC',  c:'#BA0C2F'},
+  {slug:'lsu',            name:'LSU',             conf:'SEC',  c:'#461D7C'},
+  {slug:'tennessee',      name:'Tennessee',       conf:'SEC',  c:'#FF8200'},
+  {slug:'florida',        name:'Florida',         conf:'SEC',  c:'#0021A5'},
+  {slug:'auburn',         name:'Auburn',          conf:'SEC',  c:'#0C2340'},
+  {slug:'texas_am',       name:'Texas A&M',       conf:'SEC',  c:'#500000'},
+  {slug:'oklahoma',       name:'Oklahoma',        conf:'SEC',  c:'#841617'},
+  {slug:'kentucky',       name:'Kentucky',        conf:'SEC',  c:'#0033A0'},
+  {slug:'arkansas',       name:'Arkansas',        conf:'SEC',  c:'#9D2235'},
+  {slug:'ole_miss',       name:'Ole Miss',        conf:'SEC',  c:'#CE1126'},
+  {slug:'mississippi_st', name:'Mississippi St',  conf:'SEC',  c:'#660000'},
+  // Big Ten
+  {slug:'michigan',       name:'Michigan',        conf:'Big Ten', c:'#00274C'},
+  {slug:'ohio_state',     name:'Ohio State',      conf:'Big Ten', c:'#BB0000'},
+  {slug:'penn_state',     name:'Penn State',      conf:'Big Ten', c:'#041E42'},
+  {slug:'michigan_state', name:'Michigan State',  conf:'Big Ten', c:'#18453B'},
+  {slug:'wisconsin',      name:'Wisconsin',       conf:'Big Ten', c:'#C5050C'},
+  {slug:'iowa',           name:'Iowa',            conf:'Big Ten', c:'#FFCD00'},
+  {slug:'nebraska',       name:'Nebraska',        conf:'Big Ten', c:'#E41C38'},
+  {slug:'northwestern',   name:'Northwestern',    conf:'Big Ten', c:'#4E2683'},
+  {slug:'minnesota',      name:'Minnesota',       conf:'Big Ten', c:'#7A0019'},
+  {slug:'indiana',        name:'Indiana',         conf:'Big Ten', c:'#990000'},
+  // Big 12
+  {slug:'texas',          name:'Texas',           conf:'Big 12', c:'#BF5700'},
+  {slug:'kansas_state',   name:'Kansas State',    conf:'Big 12', c:'#512888'},
+  {slug:'iowa_state',     name:'Iowa State',      conf:'Big 12', c:'#C8102E'},
+  {slug:'baylor',         name:'Baylor',          conf:'Big 12', c:'#154734'},
+  {slug:'tcu',            name:'TCU',             conf:'Big 12', c:'#4D1979'},
+  {slug:'oklahoma_state', name:'Oklahoma State',  conf:'Big 12', c:'#FF6600'},
+  // ACC
+  {slug:'clemson',        name:'Clemson',         conf:'ACC', c:'#F66733'},
+  {slug:'florida_state',  name:'Florida State',   conf:'ACC', c:'#782F40'},
+  {slug:'miami_fl',       name:'Miami FL',        conf:'ACC', c:'#F47321'},
+  {slug:'notre_dame',     name:'Notre Dame',      conf:'ACC', c:'#0C1A3C'},
+  {slug:'unc',            name:'UNC',             conf:'ACC', c:'#4B9CD3'},
+  {slug:'duke',           name:'Duke',            conf:'ACC', c:'#003087'},
+  // Pac / Independent
+  {slug:'usc',            name:'USC',             conf:'Pac', c:'#990000'},
+  {slug:'ucla',           name:'UCLA',            conf:'Pac', c:'#2D68C4'},
+  {slug:'oregon',         name:'Oregon',          conf:'Pac', c:'#154733'},
+  {slug:'washington',     name:'Washington',      conf:'Pac', c:'#4B2E83'},
+  {slug:'utah',           name:'Utah',            conf:'Pac', c:'#CC0000'},
+  {slug:'byu',            name:'BYU',             conf:'Pac', c:'#002E5D'},
+  {slug:'louisville',     name:'Louisville',      conf:'ACC', c:'#AD0000'},
+  {slug:'stanford',       name:'Stanford',        conf:'Pac', c:'#8C1515'},
+];
+
+const COLLEGE_ITEMS = COLLEGE_TEAMS.map(t => ({
+  id: `frame_college_${t.slug}_solid`,
+  name: `${t.name}`,
+  description: `${t.conf} · College`,
+  price: 100,
+  category: 'frame',
+  league: 'College',
+  teamSlug: t.slug,
+  style: 'solid',
+  colors: [t.c, t.c, t.c],
+}));
+
+const CHARACTER_BADGE_ITEMS = [
+  { id: 'badge_char_cute_alien',      name: 'Cute Alien',                price: 75, category: 'badge', genre: 'character' },
+  { id: 'badge_char_classic_mouse',   name: 'Classic Mouse',             price: 75, category: 'badge', genre: 'character' },
+  { id: 'badge_char_wabbit',          name: 'Wascally Wabbit',           price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_wise_one',        name: 'Little Green Wise One',     price: 75, category: 'badge', genre: 'character' },
+  { id: 'badge_char_fuzzy_red',       name: 'Fuzzy Red Friend',          price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_sea_sponge',      name: 'Square Sea Sponge',         price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_dark_breather',   name: 'Dark Side Breather',        price: 75, category: 'badge', genre: 'character' },
+  { id: 'badge_char_dark_knight',     name: 'Dark Knight',               price: 75, category: 'badge', genre: 'character' },
+  { id: 'badge_char_honey_bear',      name: 'Honey Bear',                price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_electric_critter',name: 'Electric Yellow Critter',   price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_swamp_ogre',      name: 'Swamp Ogre',                price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_space_ranger',    name: 'Space Ranger',              price: 75, category: 'badge', genre: 'character' },
+  { id: 'badge_char_cowboy_sheriff',  name: 'Cowboy Sheriff',            price: 75, category: 'badge', genre: 'character' },
+  { id: 'badge_char_pride_cub',       name: 'Pride Rock Cub',            price: 75, category: 'badge', genre: 'character' },
+  { id: 'badge_char_big_ears',        name: 'Big Eared Flyer',           price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_lost_fish',       name: 'Lost Little Fish',          price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_little_robot',    name: 'Lonely Little Robot',       price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_ice_queen',       name: 'Ice Queen',                 price: 75, category: 'badge', genre: 'character' },
+  { id: 'badge_char_happy_snowman',   name: 'Happy Little Snowman',      price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_forgetful_fish',  name: 'Forgetful Blue Fish',       price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_ocean_daughter',  name: 'Ocean Daughter',            price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_tower_hair',      name: 'Tower Hair Princess',       price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_hakuna',          name: 'Hakuna Matata Duo',         price: 75, category: 'badge', genre: 'character' },
+  { id: 'badge_char_lisping_duck',    name: 'Lisping Duck',              price: 50, category: 'badge', genre: 'character' },
+  { id: 'badge_char_lovable_goof',    name: 'Lovable Goofball',          price: 50, category: 'badge', genre: 'character' },
+];
+
 const HALO_ITEMS = [
   { id: 'halo_static',   name: 'Static Halo',   description: 'Badge text floats in a full circle around your avatar', price: 150, category: 'halo_style' },
   { id: 'halo_spinning', name: 'Spinning Halo', description: 'Badge text slowly rotates around your avatar',          price: 250, category: 'halo_style' },
@@ -359,7 +450,7 @@ const FEATURED_DROPS = [
 
 // Flatten all featured items into their own array, then merge into SHOP_ITEMS
 const FEATURED_ITEMS = FEATURED_DROPS.flatMap(d => d.items);
-const SHOP_ITEMS = [...EFFECT_ITEMS, ...FRAME_ITEMS, ...BADGE_ITEMS, ...HALO_ITEMS, ...FEATURED_ITEMS];
+const SHOP_ITEMS = [...EFFECT_ITEMS, ...FRAME_ITEMS, ...COLLEGE_ITEMS, ...BADGE_ITEMS, ...CHARACTER_BADGE_ITEMS, ...HALO_ITEMS, ...FEATURED_ITEMS];
 
 // ─── Featured endpoint ─────────────────────────────────────────────────────────
 fastify.get('/shop/featured', async (request, reply) => {
