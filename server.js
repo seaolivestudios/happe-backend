@@ -1207,6 +1207,16 @@ fastify.get('/coins', async (request, reply) => {
   }
 });
 
+// Public debug endpoint — returns item counts per category/league (no auth)
+fastify.get('/shop/debug-counts', async (request, reply) => {
+  const counts = {};
+  for (const item of SHOP_ITEMS) {
+    const key = `${item.category}/${item.league ?? item.genre ?? '-'}`;
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return { total: SHOP_ITEMS.length, counts };
+});
+
 fastify.get('/shop/items', async (request, reply) => {
   try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
   try {
