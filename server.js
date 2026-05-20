@@ -352,33 +352,81 @@ const COLLEGE_ITEMS = COLLEGE_TEAMS.map(t => ({
   colors: [t.c, t.c, t.c],
 }));
 
-const CHARACTER_BADGE_ITEMS = [
-  { id: 'badge_char_cute_alien',      name: 'Cute Alien',                price: 75, category: 'badge', genre: 'character' },
-  { id: 'badge_char_classic_mouse',   name: 'Classic Mouse',             price: 75, category: 'badge', genre: 'character' },
-  { id: 'badge_char_wabbit',          name: 'Wascally Wabbit',           price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_wise_one',        name: 'Little Green Wise One',     price: 75, category: 'badge', genre: 'character' },
-  { id: 'badge_char_fuzzy_red',       name: 'Fuzzy Red Friend',          price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_sea_sponge',      name: 'Square Sea Sponge',         price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_dark_breather',   name: 'Dark Side Breather',        price: 75, category: 'badge', genre: 'character' },
-  { id: 'badge_char_dark_knight',     name: 'Dark Knight',               price: 75, category: 'badge', genre: 'character' },
-  { id: 'badge_char_honey_bear',      name: 'Honey Bear',                price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_electric_critter',name: 'Electric Yellow Critter',   price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_swamp_ogre',      name: 'Swamp Ogre',                price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_space_ranger',    name: 'Space Ranger',              price: 75, category: 'badge', genre: 'character' },
-  { id: 'badge_char_cowboy_sheriff',  name: 'Cowboy Sheriff',            price: 75, category: 'badge', genre: 'character' },
-  { id: 'badge_char_pride_cub',       name: 'Pride Rock Cub',            price: 75, category: 'badge', genre: 'character' },
-  { id: 'badge_char_big_ears',        name: 'Big Eared Flyer',           price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_lost_fish',       name: 'Lost Little Fish',          price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_little_robot',    name: 'Lonely Little Robot',       price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_ice_queen',       name: 'Ice Queen',                 price: 75, category: 'badge', genre: 'character' },
-  { id: 'badge_char_happy_snowman',   name: 'Happy Little Snowman',      price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_forgetful_fish',  name: 'Forgetful Blue Fish',       price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_ocean_daughter',  name: 'Ocean Daughter',            price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_tower_hair',      name: 'Tower Hair Princess',       price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_hakuna',          name: 'Hakuna Matata Duo',         price: 75, category: 'badge', genre: 'character' },
-  { id: 'badge_char_lisping_duck',    name: 'Lisping Duck',              price: 50, category: 'badge', genre: 'character' },
-  { id: 'badge_char_lovable_goof',    name: 'Lovable Goofball',          price: 50, category: 'badge', genre: 'character' },
+// Character Frames — solid-color rings themed to famous characters (creative names)
+const CHARACTER_TEAMS = [
+  // ── Disney Classics ──
+  {slug:'classic_mouse',     name:'Classic Mouse',            c:'#1C1C1C'},  // Mickey
+  {slug:'polka_dot_mouse',   name:'Polka Dot Mouse',          c:'#E91E63'},  // Minnie
+  {slug:'grumpy_duck',       name:'Grumpy Duck',              c:'#1565C0'},  // Donald
+  {slug:'lovable_goof',      name:'Lovable Goofball',         c:'#2E7D32'},  // Goofy
+  {slug:'loyal_pup',         name:'Loyal Yellow Pup',         c:'#FDD835'},  // Pluto
+  {slug:'honey_bear',        name:'Honey Bear',               c:'#F57F17'},  // Pooh
+  {slug:'gloomy_donkey',     name:'Gloomy Little Donkey',     c:'#546E7A'},  // Eeyore
+  {slug:'bouncy_tiger',      name:'Bouncy Striped Tiger',     c:'#E65100'},  // Tigger
+  {slug:'brave_piglet',      name:'Small But Brave Piglet',   c:'#F48FB1'},  // Piglet
+  {slug:'pride_cub',         name:'Pride Rock Cub',           c:'#C99A2A'},  // Simba
+  // ── Disney Princess ──
+  {slug:'ocean_daughter',    name:'Ocean Daughter',           c:'#0277BD'},  // Moana
+  {slug:'tower_hair',        name:'Tower Hair Princess',      c:'#7B1FA2'},  // Rapunzel
+  {slug:'ice_queen',         name:'Ice Queen',                c:'#4FC3F7'},  // Elsa
+  {slug:'happy_snowman',     name:'Happy Little Snowman',     c:'#B3E5FC'},  // Olaf
+  {slug:'little_mermaid',    name:'Under the Sea Princess',   c:'#00796B'},  // Ariel
+  {slug:'beauty_bookworm',   name:'Beauty and the Bookworm',  c:'#E65100'},  // Belle
+  {slug:'diamond_rough',     name:'Diamond in the Rough',     c:'#6A1B9A'},  // Aladdin
+  {slug:'warrior_princess',  name:'Warrior Princess',         c:'#B71C1C'},  // Mulan
+  {slug:'tiger_princess',    name:'Tiger Princess',           c:'#00838F'},  // Jasmine
+  {slug:'genie_bottle',      name:'Genie in a Bottle',        c:'#FF8F00'},  // Genie
+  {slug:'brave_curls',       name:'Brave Curly Hair',         c:'#2E7D32'},  // Merida (diff green from Goofy)
+  // ── Disney/Pixar ──
+  {slug:'lost_fish',         name:'Lost Little Fish',         c:'#EF6C00'},  // Nemo
+  {slug:'forgetful_fish',    name:'Forgetful Blue Fish',      c:'#1976D2'},  // Dory
+  {slug:'lonely_robot',      name:'Lonely Little Robot',      c:'#BF360C'},  // Wall-E
+  {slug:'space_ranger',      name:'Space Ranger',             c:'#4527A0'},  // Buzz
+  {slug:'cowboy_sheriff',    name:'Cowboy Sheriff',           c:'#1A5276'},  // Woody
+  {slug:'big_ears',          name:'Big Eared Flyer',          c:'#90CAF9'},  // Dumbo
+  {slug:'cute_alien',        name:'Cute Alien',               c:'#1A237E'},  // Stitch
+  {slug:'hakuna_duo',        name:'Hakuna Matata Duo',        c:'#5D4037'},  // Timon & Pumbaa
+  // ── Classic Toons ──
+  {slug:'wabbit',            name:'Wascally Wabbit',          c:'#78909C'},  // Bugs
+  {slug:'lisping_duck',      name:'Lisping Duck',             c:'#455A64'},  // Daffy
+  {slug:'cat_chase',         name:'Cat on the Chase',         c:'#9E9E9E'},  // Tom
+  {slug:'cheese_lover',      name:'Cheese Lover',             c:'#795548'},  // Jerry
+  {slug:'smarter_bear',      name:'Smarter Than Average',     c:'#33691E'},  // Yogi
+  {slug:'yabba_dabba',       name:'Yabba Dabba Doo!',         c:'#BF360C'},  // Fred Flintstone (diff from Wall-E #BF360C → change)
+  // ── Sci-Fi / Action ──
+  {slug:'dark_breather',     name:'Dark Side Breather',       c:'#212121'},  // Vader
+  {slug:'wise_one',          name:'Little Green Wise One',    c:'#558B2F'},  // Yoda
+  {slug:'dark_knight',       name:'Dark Knight',              c:'#263238'},  // Batman
+  {slug:'web_slinger',       name:'Friendly Webslinger',      c:'#C62828'},  // Spidey
+  {slug:'wooden_boy',        name:'Wooden Boy',               c:'#039BE5'},  // Pinocchio
+  {slug:'lost_boy',          name:'Lost Boy',                 c:'#388E3C'},  // Peter Pan
+  {slug:'glowing_fairy',     name:'Glowing Fairy',            c:'#7CB342'},  // Tinker Bell
+  {slug:'mad_hatter',        name:'Mad Tea Party Hatter',     c:'#7B1FA2'},  // Mad Hatter (diff from Rapunzel → #6A0572)
+  {slug:'cheshire_grin',     name:'Cheshire Grin',            c:'#AD1457'},  // Cheshire Cat
+  // ── Modern Icons ──
+  {slug:'fuzzy_red',         name:'Fuzzy Red Friend',         c:'#D32F2F'},  // Elmo
+  {slug:'sea_sponge',        name:'Square Sea Sponge',        c:'#FBC02D'},  // SpongeBob
+  {slug:'electric_critter',  name:'Electric Yellow Critter',  c:'#FFEE58'},  // Pikachu
+  {slug:'mystery_dog',       name:'Mystery Dog',              c:'#6D4C41'},  // Scooby
+  {slug:'swamp_ogre',        name:'Swamp Ogre',               c:'#558B2F'},  // Shrek (same green as Yoda; change)
+  {slug:'blue_hedgehog',     name:'Mighty Blue Hedgehog',     c:'#0D47A1'},  // Sonic
 ];
+// Fix duplicate colors
+CHARACTER_TEAMS.find(t => t.slug === 'yabba_dabba').c = '#D84315';
+CHARACTER_TEAMS.find(t => t.slug === 'mad_hatter').c = '#6A0572';
+CHARACTER_TEAMS.find(t => t.slug === 'swamp_ogre').c = '#4CAF50';
+
+const CHARACTER_FRAME_ITEMS = CHARACTER_TEAMS.map(t => ({
+  id:          `frame_char_${t.slug}_solid`,
+  name:         t.name,
+  description: 'Characters · Solid color ring',
+  price:        100,
+  category:    'frame',
+  league:      'Characters',
+  teamSlug:     t.slug,
+  style:       'solid',
+  colors:      [t.c, t.c, t.c],
+}));
 
 const HALO_ITEMS = [
   { id: 'halo_static',   name: 'Static Halo',   description: 'Badge text floats in a full circle around your avatar', price: 150, category: 'halo_style' },
@@ -386,13 +434,29 @@ const HALO_ITEMS = [
 ];
 
 const EFFECT_ITEMS = [
-  { id: 'happy_burst',    name: 'Happy Burst',    description: 'The classic happy faces explosion', price: 0,   category: 'effect', icon: 'happy' },
-  { id: 'firework',       name: 'Firework',       description: 'Rockets launch and explode in colour', price: 100, category: 'effect', icon: 'sparkles' },
-  { id: 'sunshine_burst', name: 'Sunshine Burst', description: 'Golden rays radiate like a sunrise', price: 75,  category: 'effect', icon: 'sunny' },
-  { id: 'heart_flutter',  name: 'Heart Flutter',  description: 'Golden hearts float upward',         price: 75,  category: 'effect', icon: 'heart' },
-  { id: 'star_shower',    name: 'Star Shower',    description: 'Stars shoot in all directions',      price: 75,  category: 'effect', icon: 'star' },
-  { id: 'blue_burst',     name: 'Blue Burst',     description: 'Electric blue explosion of energy',  price: 50,  category: 'effect', icon: 'water' },
-  { id: 'red_burst',      name: 'Red Burst',      description: 'Bold red burst of excitement',       price: 50,  category: 'effect', icon: 'flame' },
+  { id: 'happy_burst',      name: 'Happy Burst',        description: 'The classic happy faces explosion',       price: 0,   category: 'effect', icon: 'happy' },
+  { id: 'firework',         name: 'Firework',           description: 'Rockets launch and explode in colour',    price: 100, category: 'effect', icon: 'sparkles' },
+  { id: 'sunshine_burst',   name: 'Sunshine Burst',     description: 'Golden rays radiate like a sunrise',      price: 75,  category: 'effect', icon: 'sunny' },
+  { id: 'heart_flutter',    name: 'Heart Flutter',      description: 'Golden hearts float upward',              price: 75,  category: 'effect', icon: 'heart' },
+  { id: 'star_shower',      name: 'Star Shower',        description: 'Stars shoot in all directions',           price: 75,  category: 'effect', icon: 'star' },
+  { id: 'blue_burst',       name: 'Blue Burst',         description: 'Electric blue explosion of energy',       price: 50,  category: 'effect', icon: 'water' },
+  { id: 'red_burst',        name: 'Red Burst',          description: 'Bold red burst of excitement',            price: 50,  category: 'effect', icon: 'flame' },
+  // 15 new effects
+  { id: 'confetti',         name: 'Confetti',           description: 'A burst of colorful confetti pieces',     price: 75,  category: 'effect', icon: 'ellipse' },
+  { id: 'snow_burst',       name: 'Snow Burst',         description: 'Snowflakes swirl in all directions',      price: 75,  category: 'effect', icon: 'snow' },
+  { id: 'lightning_strike', name: 'Lightning Strike',   description: 'Bolts of lightning radiate outward',      price: 75,  category: 'effect', icon: 'flash' },
+  { id: 'music_float',      name: 'Music Float',        description: 'Musical notes float gently upward',       price: 50,  category: 'effect', icon: 'musical-note' },
+  { id: 'money_rain',       name: 'Money Rain',         description: 'Coins and cash shower down',              price: 75,  category: 'effect', icon: 'cash' },
+  { id: 'flower_burst',     name: 'Flower Burst',       description: 'Blossoms explode in every direction',     price: 75,  category: 'effect', icon: 'flower' },
+  { id: 'leaf_shower',      name: 'Leaf Shower',        description: 'Autumn leaves drift gracefully upward',   price: 50,  category: 'effect', icon: 'leaf' },
+  { id: 'trophy_shower',    name: 'Trophy Shower',      description: 'Gold trophies rain down in glory',        price: 100, category: 'effect', icon: 'trophy' },
+  { id: 'diamond_burst',    name: 'Diamond Burst',      description: 'Gems and crystals burst outward',         price: 100, category: 'effect', icon: 'diamond' },
+  { id: 'green_burst',      name: 'Green Burst',        description: 'Emerald green energy explosion',          price: 50,  category: 'effect', icon: 'ellipse' },
+  { id: 'purple_burst',     name: 'Purple Burst',       description: 'Violet and magenta radiant burst',        price: 50,  category: 'effect', icon: 'ellipse' },
+  { id: 'orange_burst',     name: 'Orange Burst',       description: 'Warm sunset orange energy wave',          price: 50,  category: 'effect', icon: 'ellipse' },
+  { id: 'sparkle_rain',     name: 'Sparkle Rain',       description: 'Golden sparkles drift down like stardust', price: 75, category: 'effect', icon: 'sparkles' },
+  { id: 'planet_burst',     name: 'Cosmic Burst',       description: 'Planets and stars shoot outward',         price: 100, category: 'effect', icon: 'planet' },
+  { id: 'neon_burst',       name: 'Neon Burst',         description: 'Ultra-bright neon explosion of color',    price: 150, category: 'effect', icon: 'ellipse' },
 ];
 
 // ─── Featured Drops ───────────────────────────────────────────────────────────
@@ -408,16 +472,13 @@ const FEATURED_DROPS = [
     accentColor: '#B22234',
     expires_at: '2026-07-04T23:59:59Z',
     items: [
-      // ── Patriotic Profile Frames ──────────────────────────────────────────
-      // Stars & Stripes: Official US flag Old Glory Red / White / Old Glory Blue
-      { id: 'frame_america_stars_split',      name: 'Stars & Stripes Split',    description: 'Red, White & Blue · Split ring',    price: 150, category: 'frame', style: 'split',    colors: ['#B22234','#FFFFFF','#3C3B6E'], featured: true, dropId: 'america250' },
-      { id: 'frame_america_stars_gradient',   name: 'Stars & Stripes Gradient', description: 'Red, White & Blue · Gradient ring', price: 150, category: 'frame', style: 'gradient', colors: ['#B22234','#FFFFFF','#3C3B6E'], featured: true, dropId: 'america250' },
-      // Patriot: Navy / Red / White
-      { id: 'frame_america_patriot_split',    name: 'Patriot Split',            description: 'Navy, Red & White · Split ring',    price: 150, category: 'frame', style: 'split',    colors: ['#3C3B6E','#B22234','#FFFFFF'], featured: true, dropId: 'america250' },
-      { id: 'frame_america_patriot_gradient', name: 'Patriot Gradient',         description: 'Navy, Red & White · Gradient ring', price: 150, category: 'frame', style: 'gradient', colors: ['#3C3B6E','#B22234','#FFFFFF'], featured: true, dropId: 'america250' },
-      // Liberty: Navy / Gold / White (Statue of Liberty torch)
-      { id: 'frame_america_liberty_split',    name: 'Liberty Split',            description: 'Navy, Gold & White · Split ring',    price: 150, category: 'frame', style: 'split',    colors: ['#3C3B6E','#C5A028','#FFFFFF'], featured: true, dropId: 'america250' },
-      { id: 'frame_america_liberty_gradient', name: 'Liberty Gradient',         description: 'Navy, Gold & White · Gradient ring', price: 150, category: 'frame', style: 'gradient', colors: ['#3C3B6E','#C5A028','#FFFFFF'], featured: true, dropId: 'america250' },
+      // ── Patriotic Profile Frames (Flag-style stripe rings) ───────────────
+      // The Flag: 13 alternating red/white stripes + blue canton with stars
+      { id: 'frame_america_flag_stripe',     name: 'The Flag',          description: '13 Red & White Stripes · Blue Canton', price: 150, category: 'frame', style: 'stripe', colors: ['#B22234','#FFFFFF','#3C3B6E'], featured: true, dropId: 'america250', league: 'america' },
+      // Patriot: Navy stripes + red canton
+      { id: 'frame_america_patriot_stripe',  name: 'Patriot',           description: 'Navy & Red Stripes · Red Canton',       price: 150, category: 'frame', style: 'stripe', colors: ['#3C3B6E','#FFFFFF','#B22234'], featured: true, dropId: 'america250', league: 'america' },
+      // Liberty: Red stripes + gold canton
+      { id: 'frame_america_liberty_stripe',  name: 'Liberty Gold',      description: 'Red & White Stripes · Gold Canton',     price: 150, category: 'frame', style: 'stripe', colors: ['#B22234','#FFFFFF','#C5A028'], featured: true, dropId: 'america250', league: 'america' },
 
       // ── Presidential Quotes ───────────────────────────────────────────────
       { id: 'badge_america_ask_not',      name: 'Ask not what your country can do for you', price: 75, category: 'badge', genre: 'america_quote', featured: true, dropId: 'america250' },
@@ -450,7 +511,7 @@ const FEATURED_DROPS = [
 
 // Flatten all featured items into their own array, then merge into SHOP_ITEMS
 const FEATURED_ITEMS = FEATURED_DROPS.flatMap(d => d.items);
-const SHOP_ITEMS = [...EFFECT_ITEMS, ...FRAME_ITEMS, ...COLLEGE_ITEMS, ...BADGE_ITEMS, ...CHARACTER_BADGE_ITEMS, ...HALO_ITEMS, ...FEATURED_ITEMS];
+const SHOP_ITEMS = [...EFFECT_ITEMS, ...FRAME_ITEMS, ...COLLEGE_ITEMS, ...CHARACTER_FRAME_ITEMS, ...BADGE_ITEMS, ...HALO_ITEMS, ...FEATURED_ITEMS];
 
 // ─── Featured endpoint ─────────────────────────────────────────────────────────
 fastify.get('/shop/featured', async (request, reply) => {
