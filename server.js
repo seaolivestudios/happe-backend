@@ -533,8 +533,14 @@ fastify.post('/posts/:id/comment', async (request, reply) => {
         await sendPush(owner.rows[0].push_token, 'Happ-E', `${actorName} commented on your post`, { type: 'comment', postId: String(id) });
       }
     }
-    // Award 5 coins to the commenter
-    await pool.query('UPDATE users SET coins = coins + 5 WHERE id = $1', [request.user.id]);
+    // Award 5 coins to the commenter — only for their FIRST comment on this post
+    const prevComments = await pool.query(
+      'SELECT id FROM comments WHERE user_id = $1 AND post_id = $2 AND id != $3',
+      [request.user.id, id, result.rows[0].id]
+    );
+    if (prevComments.rows.length === 0) {
+      await pool.query('UPDATE users SET coins = coins + 5 WHERE id = $1', [request.user.id]);
+    }
     return { success: true, comment: result.rows[0] };
   } catch (err) {
     fastify.log.error(err);
@@ -1226,6 +1232,21 @@ fastify.post('/sparks/current/respond', async (request, reply) => {
   }
 });
 
+// TEMP admin route — will be removed after use
+fastify.post('/admin/give-coins', async (request, reply) => {
+  if (request.headers['x-admin-secret'] !== 'happe-admin-2026') return reply.status(403).send({ error: 'Forbidden' });
+  const { handle, coins } = request.body;
+  try {
+    const result = await pool.query(
+      `UPDATE users SET coins = coins + $1 WHERE LOWER(handle) = LOWER($2) RETURNING id, handle, coins`,
+      [coins, handle]
+    );
+    if (result.rows.length === 0) return reply.status(404).send({ error: 'User not found' });
+    return { success: true, user: result.rows[0] };
+  } catch (err) {
+    return reply.status(500).send({ error: err.message });
+  }
+});
 
 const initDB = async () => {
   await pool.query(`
