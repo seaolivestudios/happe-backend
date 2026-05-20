@@ -392,7 +392,7 @@ const CHARACTER_TEAMS = [
   {slug:'cat_chase',         name:'Cat on the Chase',         c:'#9E9E9E'},  // Tom
   {slug:'cheese_lover',      name:'Cheese Lover',             c:'#795548'},  // Jerry
   {slug:'smarter_bear',      name:'Smarter Than Average',     c:'#33691E'},  // Yogi
-  {slug:'yabba_dabba',       name:'Yabba Dabba Doo!',         c:'#BF360C'},  // Fred Flintstone (diff from Wall-E #BF360C → change)
+  {slug:'yabba_dabba',       name:'Yabba Dabba Doo!',         c:'#D84315'},  // Fred Flintstone
   // ── Sci-Fi / Action ──
   {slug:'dark_breather',     name:'Dark Side Breather',       c:'#212121'},  // Vader
   {slug:'wise_one',          name:'Little Green Wise One',    c:'#558B2F'},  // Yoda
@@ -401,20 +401,16 @@ const CHARACTER_TEAMS = [
   {slug:'wooden_boy',        name:'Wooden Boy',               c:'#039BE5'},  // Pinocchio
   {slug:'lost_boy',          name:'Lost Boy',                 c:'#388E3C'},  // Peter Pan
   {slug:'glowing_fairy',     name:'Glowing Fairy',            c:'#7CB342'},  // Tinker Bell
-  {slug:'mad_hatter',        name:'Mad Tea Party Hatter',     c:'#7B1FA2'},  // Mad Hatter (diff from Rapunzel → #6A0572)
+  {slug:'mad_hatter',        name:'Mad Tea Party Hatter',     c:'#6A0572'},  // Mad Hatter
   {slug:'cheshire_grin',     name:'Cheshire Grin',            c:'#AD1457'},  // Cheshire Cat
   // ── Modern Icons ──
   {slug:'fuzzy_red',         name:'Fuzzy Red Friend',         c:'#D32F2F'},  // Elmo
   {slug:'sea_sponge',        name:'Square Sea Sponge',        c:'#FBC02D'},  // SpongeBob
   {slug:'electric_critter',  name:'Electric Yellow Critter',  c:'#FFEE58'},  // Pikachu
   {slug:'mystery_dog',       name:'Mystery Dog',              c:'#6D4C41'},  // Scooby
-  {slug:'swamp_ogre',        name:'Swamp Ogre',               c:'#558B2F'},  // Shrek (same green as Yoda; change)
+  {slug:'swamp_ogre',        name:'Swamp Ogre',               c:'#4CAF50'},  // Shrek
   {slug:'blue_hedgehog',     name:'Mighty Blue Hedgehog',     c:'#0D47A1'},  // Sonic
 ];
-// Fix duplicate colors
-CHARACTER_TEAMS.find(t => t.slug === 'yabba_dabba').c = '#D84315';
-CHARACTER_TEAMS.find(t => t.slug === 'mad_hatter').c = '#6A0572';
-CHARACTER_TEAMS.find(t => t.slug === 'swamp_ogre').c = '#4CAF50';
 
 const CHARACTER_FRAME_ITEMS = CHARACTER_TEAMS.map(t => ({
   id:          `frame_char_${t.slug}_solid`,
