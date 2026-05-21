@@ -289,144 +289,158 @@ const BADGE_ITEMS = [
   { id: 'badge_quip_absolutely',         name: "Absolutely unhinged",           price: 50, category: 'badge', genre: 'quip' },
 ];
 
-// College teams — solid single-color rings
+// College teams — dotted 3-color rings
 const COLLEGE_TEAMS = [
   // SEC
-  {slug:'alabama',        name:'Alabama',         conf:'SEC',  c:'#9E1B32'},
-  {slug:'georgia',        name:'Georgia',         conf:'SEC',  c:'#BA0C2F'},
-  {slug:'lsu',            name:'LSU',             conf:'SEC',  c:'#461D7C'},
-  {slug:'tennessee',      name:'Tennessee',       conf:'SEC',  c:'#FF8200'},
-  {slug:'florida',        name:'Florida',         conf:'SEC',  c:'#0021A5'},
-  {slug:'auburn',         name:'Auburn',          conf:'SEC',  c:'#0C2340'},
-  {slug:'texas_am',       name:'Texas A&M',       conf:'SEC',  c:'#500000'},
-  {slug:'oklahoma',       name:'Oklahoma',        conf:'SEC',  c:'#841617'},
-  {slug:'kentucky',       name:'Kentucky',        conf:'SEC',  c:'#0033A0'},
-  {slug:'arkansas',       name:'Arkansas',        conf:'SEC',  c:'#9D2235'},
-  {slug:'ole_miss',       name:'Ole Miss',        conf:'SEC',  c:'#CE1126'},
-  {slug:'mississippi_st', name:'Mississippi St',  conf:'SEC',  c:'#660000'},
+  {slug:'alabama',        name:'Alabama',         conf:'SEC',     nick:'Roll Tide',  loc:'Alabama',    c1:'#9E1B32',c2:'#828A8F',c3:'#FFFFFF'},
+  {slug:'georgia',        name:'Georgia',         conf:'SEC',     nick:'Dawgs',      loc:'Georgia',    c1:'#BA0C2F',c2:'#000000',c3:'#FFFFFF'},
+  {slug:'lsu',            name:'LSU',             conf:'SEC',     nick:'Tigers',     loc:'Louisiana',  c1:'#461D7C',c2:'#FDD023',c3:'#FFFFFF'},
+  {slug:'tennessee',      name:'Tennessee',       conf:'SEC',     nick:'Vols',       loc:'Tennessee',  c1:'#FF8200',c2:'#58595B',c3:'#FFFFFF'},
+  {slug:'florida',        name:'Florida',         conf:'SEC',     nick:'Gators',     loc:'Florida',    c1:'#0021A5',c2:'#FA4616',c3:'#FFFFFF'},
+  {slug:'auburn',         name:'Auburn',          conf:'SEC',     nick:'Tigers',     loc:'Auburn',     c1:'#0C2340',c2:'#E87722',c3:'#FFFFFF'},
+  {slug:'texas_am',       name:'Texas A&M',       conf:'SEC',     nick:'Aggies',     loc:'Texas',      c1:'#500000',c2:'#FFFFFF',c3:'#828A8F'},
+  {slug:'oklahoma',       name:'Oklahoma',        conf:'SEC',     nick:'Sooners',    loc:'Oklahoma',   c1:'#841617',c2:'#F0EBD8',c3:'#FFFFFF'},
+  {slug:'kentucky',       name:'Kentucky',        conf:'SEC',     nick:'Wildcats',   loc:'Kentucky',   c1:'#0033A0',c2:'#FFFFFF',c3:'#828A8F'},
+  {slug:'arkansas',       name:'Arkansas',        conf:'SEC',     nick:'Hogs',       loc:'Arkansas',   c1:'#9D2235',c2:'#FFFFFF',c3:'#828A8F'},
+  {slug:'ole_miss',       name:'Ole Miss',        conf:'SEC',     nick:'Rebels',     loc:'Mississippi',c1:'#CE1126',c2:'#14213D',c3:'#FFFFFF'},
+  {slug:'mississippi_st', name:'Mississippi St',  conf:'SEC',     nick:'Bulldogs',   loc:'Starkville', c1:'#660000',c2:'#FFFFFF',c3:'#828A8F'},
   // Big Ten
-  {slug:'michigan',       name:'Michigan',        conf:'Big Ten', c:'#00274C'},
-  {slug:'ohio_state',     name:'Ohio State',      conf:'Big Ten', c:'#BB0000'},
-  {slug:'penn_state',     name:'Penn State',      conf:'Big Ten', c:'#041E42'},
-  {slug:'michigan_state', name:'Michigan State',  conf:'Big Ten', c:'#18453B'},
-  {slug:'wisconsin',      name:'Wisconsin',       conf:'Big Ten', c:'#C5050C'},
-  {slug:'iowa',           name:'Iowa',            conf:'Big Ten', c:'#FFCD00'},
-  {slug:'nebraska',       name:'Nebraska',        conf:'Big Ten', c:'#E41C38'},
-  {slug:'northwestern',   name:'Northwestern',    conf:'Big Ten', c:'#4E2683'},
-  {slug:'minnesota',      name:'Minnesota',       conf:'Big Ten', c:'#7A0019'},
-  {slug:'indiana',        name:'Indiana',         conf:'Big Ten', c:'#990000'},
+  {slug:'michigan',       name:'Michigan',        conf:'Big Ten', nick:'Wolverines', loc:'Michigan',   c1:'#00274C',c2:'#FFCB05',c3:'#FFFFFF'},
+  {slug:'ohio_state',     name:'Ohio State',      conf:'Big Ten', nick:'Buckeyes',   loc:'Ohio',       c1:'#BB0000',c2:'#666666',c3:'#FFFFFF'},
+  {slug:'penn_state',     name:'Penn State',      conf:'Big Ten', nick:'Lions',      loc:'Penn State', c1:'#041E42',c2:'#FFFFFF',c3:'#828A8F'},
+  {slug:'michigan_state', name:'Michigan State',  conf:'Big Ten', nick:'Spartans',   loc:'Michigan',   c1:'#18453B',c2:'#FFFFFF',c3:'#828A8F'},
+  {slug:'wisconsin',      name:'Wisconsin',       conf:'Big Ten', nick:'Badgers',    loc:'Wisconsin',  c1:'#C5050C',c2:'#F7F7F7',c3:'#FFFFFF'},
+  {slug:'iowa',           name:'Iowa',            conf:'Big Ten', nick:'Hawkeyes',   loc:'Iowa',       c1:'#FFCD00',c2:'#000000',c3:'#FFFFFF'},
+  {slug:'nebraska',       name:'Nebraska',        conf:'Big Ten', nick:'Huskers',    loc:'Nebraska',   c1:'#E41C38',c2:'#F5F1E7',c3:'#FFFFFF'},
+  {slug:'northwestern',   name:'Northwestern',    conf:'Big Ten', nick:'Wildcats',   loc:'Evanston',   c1:'#4E2683',c2:'#FFFFFF',c3:'#828A8F'},
+  {slug:'minnesota',      name:'Minnesota',       conf:'Big Ten', nick:'Gophers',    loc:'Minnesota',  c1:'#7A0019',c2:'#FFCC33',c3:'#FFFFFF'},
+  {slug:'indiana',        name:'Indiana',         conf:'Big Ten', nick:'Hoosiers',   loc:'Indiana',    c1:'#990000',c2:'#FFFFFF',c3:'#828A8F'},
   // Big 12
-  {slug:'texas',          name:'Texas',           conf:'Big 12', c:'#BF5700'},
-  {slug:'kansas_state',   name:'Kansas State',    conf:'Big 12', c:'#512888'},
-  {slug:'iowa_state',     name:'Iowa State',      conf:'Big 12', c:'#C8102E'},
-  {slug:'baylor',         name:'Baylor',          conf:'Big 12', c:'#154734'},
-  {slug:'tcu',            name:'TCU',             conf:'Big 12', c:'#4D1979'},
-  {slug:'oklahoma_state', name:'Oklahoma State',  conf:'Big 12', c:'#FF6600'},
+  {slug:'texas',          name:'Texas',           conf:'Big 12',  nick:'Longhorns',  loc:'Texas',      c1:'#BF5700',c2:'#FFFFFF',c3:'#828A8F'},
+  {slug:'kansas_state',   name:'Kansas State',    conf:'Big 12',  nick:'Wildcats',   loc:'Manhattan',  c1:'#512888',c2:'#FFFFFF',c3:'#828A8F'},
+  {slug:'iowa_state',     name:'Iowa State',      conf:'Big 12',  nick:'Cyclones',   loc:'Iowa State', c1:'#C8102E',c2:'#F1BE48',c3:'#FFFFFF'},
+  {slug:'baylor',         name:'Baylor',          conf:'Big 12',  nick:'Bears',      loc:'Waco',       c1:'#154734',c2:'#FFAE35',c3:'#FFFFFF'},
+  {slug:'tcu',            name:'TCU',             conf:'Big 12',  nick:'Frogs',      loc:'Fort Worth', c1:'#4D1979',c2:'#FFFFFF',c3:'#828A8F'},
+  {slug:'oklahoma_state', name:'Oklahoma State',  conf:'Big 12',  nick:'Cowboys',    loc:'Stillwater', c1:'#FF6600',c2:'#000000',c3:'#FFFFFF'},
   // ACC
-  {slug:'clemson',        name:'Clemson',         conf:'ACC', c:'#F66733'},
-  {slug:'florida_state',  name:'Florida State',   conf:'ACC', c:'#782F40'},
-  {slug:'miami_fl',       name:'Miami FL',        conf:'ACC', c:'#F47321'},
-  {slug:'notre_dame',     name:'Notre Dame',      conf:'ACC', c:'#0C1A3C'},
-  {slug:'unc',            name:'UNC',             conf:'ACC', c:'#4B9CD3'},
-  {slug:'duke',           name:'Duke',            conf:'ACC', c:'#003087'},
+  {slug:'clemson',        name:'Clemson',         conf:'ACC',     nick:'Tigers',     loc:'Clemson',    c1:'#F66733',c2:'#522D80',c3:'#FFFFFF'},
+  {slug:'florida_state',  name:'Florida State',   conf:'ACC',     nick:'Noles',      loc:'Florida',    c1:'#782F40',c2:'#CEB888',c3:'#FFFFFF'},
+  {slug:'miami_fl',       name:'Miami FL',        conf:'ACC',     nick:'Canes',      loc:'Miami',      c1:'#F47321',c2:'#005030',c3:'#FFFFFF'},
+  {slug:'notre_dame',     name:'Notre Dame',      conf:'ACC',     nick:'Irish',      loc:'South Bend', c1:'#0C1A3C',c2:'#C99700',c3:'#FFFFFF'},
+  {slug:'unc',            name:'UNC',             conf:'ACC',     nick:'Heels',      loc:'Chapel Hill',c1:'#4B9CD3',c2:'#FFFFFF',c3:'#13294B'},
+  {slug:'duke',           name:'Duke',            conf:'ACC',     nick:'Devils',     loc:'Durham',     c1:'#003087',c2:'#FFFFFF',c3:'#828A8F'},
   // Pac / Independent
-  {slug:'usc',            name:'USC',             conf:'Pac', c:'#990000'},
-  {slug:'ucla',           name:'UCLA',            conf:'Pac', c:'#2D68C4'},
-  {slug:'oregon',         name:'Oregon',          conf:'Pac', c:'#154733'},
-  {slug:'washington',     name:'Washington',      conf:'Pac', c:'#4B2E83'},
-  {slug:'utah',           name:'Utah',            conf:'Pac', c:'#CC0000'},
-  {slug:'byu',            name:'BYU',             conf:'Pac', c:'#002E5D'},
-  {slug:'louisville',     name:'Louisville',      conf:'ACC', c:'#AD0000'},
-  {slug:'stanford',       name:'Stanford',        conf:'Pac', c:'#8C1515'},
+  {slug:'usc',            name:'USC',             conf:'Pac',     nick:'Trojans',    loc:'Los Angeles',c1:'#990000',c2:'#FFC72C',c3:'#FFFFFF'},
+  {slug:'ucla',           name:'UCLA',            conf:'Pac',     nick:'Bruins',     loc:'Los Angeles',c1:'#2D68C4',c2:'#FFC72C',c3:'#FFFFFF'},
+  {slug:'oregon',         name:'Oregon',          conf:'Pac',     nick:'Ducks',      loc:'Oregon',     c1:'#154733',c2:'#FEE123',c3:'#FFFFFF'},
+  {slug:'washington',     name:'Washington',      conf:'Pac',     nick:'Huskies',    loc:'Seattle',    c1:'#4B2E83',c2:'#FFFFFF',c3:'#828A8F'},
+  {slug:'utah',           name:'Utah',            conf:'Pac',     nick:'Utes',       loc:'Utah',       c1:'#CC0000',c2:'#FFFFFF',c3:'#000000'},
+  {slug:'byu',            name:'BYU',             conf:'Pac',     nick:'Cougars',    loc:'Provo',      c1:'#002E5D',c2:'#FFFFFF',c3:'#828A8F'},
+  {slug:'louisville',     name:'Louisville',      conf:'ACC',     nick:'Cards',      loc:'Louisville', c1:'#AD0000',c2:'#000000',c3:'#FFFFFF'},
+  {slug:'stanford',       name:'Stanford',        conf:'Pac',     nick:'Cardinal',   loc:'Stanford',   c1:'#8C1515',c2:'#FFFFFF',c3:'#000000'},
 ];
 
-const COLLEGE_ITEMS = COLLEGE_TEAMS.map(t => ({
-  id: `frame_college_${t.slug}_solid`,
-  name: `${t.name}`,
-  description: `${t.conf} · College`,
-  price: 100,
-  category: 'frame',
-  league: 'College',
-  teamSlug: t.slug,
-  style: 'solid',
-  colors: [t.c, t.c, t.c],
-}));
+const COLLEGE_ITEMS = COLLEGE_TEAMS.flatMap(t => [
+  {
+    id: `frame_college_${t.slug}_dot_nick`,
+    name: `${t.name} · ${t.nick}`,
+    description: `${t.conf} · College`,
+    price: 100,
+    category: 'frame',
+    league: 'College',
+    teamSlug: t.slug,
+    style: 'dotted',
+    label: t.nick,
+    colors: [t.c1, t.c2, t.c3],
+  },
+  {
+    id: `frame_college_${t.slug}_dot_loc`,
+    name: `${t.name} · ${t.loc}`,
+    description: `${t.conf} · College`,
+    price: 100,
+    category: 'frame',
+    league: 'College',
+    teamSlug: t.slug,
+    style: 'dotted',
+    label: t.loc,
+    colors: [t.c1, t.c2, t.c3],
+  },
+]);
 
-// Character Frames — solid-color rings themed to famous characters (creative names)
+// Character Frames — gradient-color rings themed to famous characters (creative names)
 const CHARACTER_TEAMS = [
   // ── Disney Classics ──
-  {slug:'classic_mouse',     name:'Classic Mouse',            c:'#1C1C1C'},  // Mickey
-  {slug:'polka_dot_mouse',   name:'Polka Dot Mouse',          c:'#E91E63'},  // Minnie
-  {slug:'grumpy_duck',       name:'Grumpy Duck',              c:'#1565C0'},  // Donald
-  {slug:'lovable_goof',      name:'Lovable Goofball',         c:'#2E7D32'},  // Goofy
-  {slug:'loyal_pup',         name:'Loyal Yellow Pup',         c:'#FDD835'},  // Pluto
-  {slug:'honey_bear',        name:'Honey Bear',               c:'#F57F17'},  // Pooh
-  {slug:'gloomy_donkey',     name:'Gloomy Little Donkey',     c:'#546E7A'},  // Eeyore
-  {slug:'bouncy_tiger',      name:'Bouncy Striped Tiger',     c:'#E65100'},  // Tigger
-  {slug:'brave_piglet',      name:'Small But Brave Piglet',   c:'#F48FB1'},  // Piglet
-  {slug:'pride_cub',         name:'Pride Rock Cub',           c:'#C99A2A'},  // Simba
+  {slug:'classic_mouse',    name:'Classic Mouse',           c1:'#212121',c2:'#E53935',c3:'#FDD835'},
+  {slug:'polka_dot_mouse',  name:'Polka Dot Mouse',         c1:'#E91E63',c2:'#B71C1C',c3:'#FFFFFF'},
+  {slug:'grumpy_duck',      name:'Grumpy Duck',             c1:'#1565C0',c2:'#FFFFFF',c3:'#FFCA28'},
+  {slug:'lovable_goof',     name:'Lovable Goofball',        c1:'#2E7D32',c2:'#795548',c3:'#FF8F00'},
+  {slug:'loyal_pup',        name:'Loyal Yellow Pup',        c1:'#FDD835',c2:'#FF8F00',c3:'#795548'},
+  {slug:'honey_bear',       name:'Honey Bear',              c1:'#F9A825',c2:'#C62828',c3:'#A5D6A7'},
+  {slug:'gloomy_donkey',    name:'Gloomy Little Donkey',    c1:'#546E7A',c2:'#B0BEC5',c3:'#A5D6A7'},
+  {slug:'bouncy_tiger',     name:'Bouncy Striped Tiger',    c1:'#E65100',c2:'#FDD835',c3:'#212121'},
+  {slug:'brave_piglet',     name:'Small But Brave Piglet',  c1:'#F48FB1',c2:'#FFCCBC',c3:'#F9A825'},
+  {slug:'pride_cub',        name:'Pride Rock Cub',          c1:'#C99A2A',c2:'#E65100',c3:'#212121'},
   // ── Disney Princess ──
-  {slug:'ocean_daughter',    name:'Ocean Daughter',           c:'#0277BD'},  // Moana
-  {slug:'tower_hair',        name:'Tower Hair Princess',      c:'#7B1FA2'},  // Rapunzel
-  {slug:'ice_queen',         name:'Ice Queen',                c:'#4FC3F7'},  // Elsa
-  {slug:'happy_snowman',     name:'Happy Little Snowman',     c:'#B3E5FC'},  // Olaf
-  {slug:'little_mermaid',    name:'Under the Sea Princess',   c:'#00796B'},  // Ariel
-  {slug:'beauty_bookworm',   name:'Beauty and the Bookworm',  c:'#E65100'},  // Belle
-  {slug:'diamond_rough',     name:'Diamond in the Rough',     c:'#6A1B9A'},  // Aladdin
-  {slug:'warrior_princess',  name:'Warrior Princess',         c:'#B71C1C'},  // Mulan
-  {slug:'tiger_princess',    name:'Tiger Princess',           c:'#00838F'},  // Jasmine
-  {slug:'genie_bottle',      name:'Genie in a Bottle',        c:'#FF8F00'},  // Genie
-  {slug:'brave_curls',       name:'Brave Curly Hair',         c:'#2E7D32'},  // Merida (diff green from Goofy)
+  {slug:'ocean_daughter',   name:'Ocean Daughter',          c1:'#0277BD',c2:'#00897B',c3:'#FF8A65'},
+  {slug:'tower_hair',       name:'Tower Hair Princess',     c1:'#7B1FA2',c2:'#F9A825',c3:'#81C784'},
+  {slug:'ice_queen',        name:'Ice Queen',               c1:'#4FC3F7',c2:'#7986CB',c3:'#FFFFFF'},
+  {slug:'happy_snowman',    name:'Happy Little Snowman',    c1:'#B3E5FC',c2:'#FFFFFF',c3:'#FF8A65'},
+  {slug:'little_mermaid',   name:'Under the Sea Princess',  c1:'#00796B',c2:'#E53935',c3:'#FFCA28'},
+  {slug:'beauty_bookworm',  name:'Beauty and the Bookworm', c1:'#E65100',c2:'#FDD835',c3:'#4A148C'},
+  {slug:'diamond_rough',    name:'Diamond in the Rough',    c1:'#6A1B9A',c2:'#F9A825',c3:'#E53935'},
+  {slug:'warrior_princess', name:'Warrior Princess',        c1:'#B71C1C',c2:'#37474F',c3:'#F9A825'},
+  {slug:'tiger_princess',   name:'Tiger Princess',          c1:'#00838F',c2:'#4A148C',c3:'#F9A825'},
+  {slug:'genie_bottle',     name:'Genie in a Bottle',       c1:'#1565C0',c2:'#FF8F00',c3:'#FFEE58'},
+  {slug:'brave_curls',      name:'Brave Curly Hair',        c1:'#1B5E20',c2:'#F57F17',c3:'#37474F'},
   // ── Disney/Pixar ──
-  {slug:'lost_fish',         name:'Lost Little Fish',         c:'#EF6C00'},  // Nemo
-  {slug:'forgetful_fish',    name:'Forgetful Blue Fish',      c:'#1976D2'},  // Dory
-  {slug:'lonely_robot',      name:'Lonely Little Robot',      c:'#BF360C'},  // Wall-E
-  {slug:'space_ranger',      name:'Space Ranger',             c:'#4527A0'},  // Buzz
-  {slug:'cowboy_sheriff',    name:'Cowboy Sheriff',           c:'#1A5276'},  // Woody
-  {slug:'big_ears',          name:'Big Eared Flyer',          c:'#90CAF9'},  // Dumbo
-  {slug:'cute_alien',        name:'Cute Alien',               c:'#1A237E'},  // Stitch
-  {slug:'hakuna_duo',        name:'Hakuna Matata Duo',        c:'#5D4037'},  // Timon & Pumbaa
+  {slug:'lost_fish',        name:'Lost Little Fish',        c1:'#EF6C00',c2:'#FFFFFF',c3:'#212121'},
+  {slug:'forgetful_fish',   name:'Forgetful Blue Fish',     c1:'#1976D2',c2:'#FFCA28',c3:'#26C6DA'},
+  {slug:'lonely_robot',     name:'Lonely Little Robot',     c1:'#BF360C',c2:'#FFCA28',c3:'#546E7A'},
+  {slug:'space_ranger',     name:'Space Ranger',            c1:'#4527A0',c2:'#FFFFFF',c3:'#43A047'},
+  {slug:'cowboy_sheriff',   name:'Cowboy Sheriff',          c1:'#1565C0',c2:'#FFCA28',c3:'#C62828'},
+  {slug:'big_ears',         name:'Big Eared Flyer',         c1:'#90CAF9',c2:'#FFCCBC',c3:'#F48FB1'},
+  {slug:'cute_alien',       name:'Cute Alien',              c1:'#1A237E',c2:'#B0BEC5',c3:'#E53935'},
+  {slug:'hakuna_duo',       name:'Hakuna Matata Duo',       c1:'#5D4037',c2:'#8BC34A',c3:'#FDD835'},
   // ── Classic Toons ──
-  {slug:'wabbit',            name:'Wascally Wabbit',          c:'#78909C'},  // Bugs
-  {slug:'lisping_duck',      name:'Lisping Duck',             c:'#455A64'},  // Daffy
-  {slug:'cat_chase',         name:'Cat on the Chase',         c:'#9E9E9E'},  // Tom
-  {slug:'cheese_lover',      name:'Cheese Lover',             c:'#795548'},  // Jerry
-  {slug:'smarter_bear',      name:'Smarter Than Average',     c:'#33691E'},  // Yogi
-  {slug:'yabba_dabba',       name:'Yabba Dabba Doo!',         c:'#D84315'},  // Fred Flintstone
+  {slug:'wabbit',           name:'Wascally Wabbit',         c1:'#78909C',c2:'#FFFFFF',c3:'#E91E63'},
+  {slug:'lisping_duck',     name:'Lisping Duck',            c1:'#1A237E',c2:'#37474F',c3:'#FFFFFF'},
+  {slug:'cat_chase',        name:'Cat on the Chase',        c1:'#9E9E9E',c2:'#F5F5F5',c3:'#FF8A65'},
+  {slug:'cheese_lover',     name:'Cheese Lover',            c1:'#795548',c2:'#F9A825',c3:'#EF5350'},
+  {slug:'smarter_bear',     name:'Smarter Than Average',    c1:'#33691E',c2:'#FFFFFF',c3:'#F9A825'},
+  {slug:'yabba_dabba',      name:'Yabba Dabba Doo!',        c1:'#D84315',c2:'#795548',c3:'#F9A825'},
   // ── Sci-Fi / Action ──
-  {slug:'dark_breather',     name:'Dark Side Breather',       c:'#212121'},  // Vader
-  {slug:'wise_one',          name:'Little Green Wise One',    c:'#558B2F'},  // Yoda
-  {slug:'dark_knight',       name:'Dark Knight',              c:'#263238'},  // Batman
-  {slug:'web_slinger',       name:'Friendly Webslinger',      c:'#C62828'},  // Spidey
-  {slug:'wooden_boy',        name:'Wooden Boy',               c:'#039BE5'},  // Pinocchio
-  {slug:'lost_boy',          name:'Lost Boy',                 c:'#388E3C'},  // Peter Pan
-  {slug:'glowing_fairy',     name:'Glowing Fairy',            c:'#7CB342'},  // Tinker Bell
-  {slug:'mad_hatter',        name:'Mad Tea Party Hatter',     c:'#6A0572'},  // Mad Hatter
-  {slug:'cheshire_grin',     name:'Cheshire Grin',            c:'#AD1457'},  // Cheshire Cat
+  {slug:'dark_breather',    name:'Dark Side Breather',      c1:'#212121',c2:'#37474F',c3:'#B0BEC5'},
+  {slug:'wise_one',         name:'Little Green Wise One',   c1:'#558B2F',c2:'#A5D6A7',c3:'#795548'},
+  {slug:'dark_knight',      name:'Dark Knight',             c1:'#212121',c2:'#37474F',c3:'#FFCA28'},
+  {slug:'web_slinger',      name:'Friendly Webslinger',     c1:'#C62828',c2:'#212121',c3:'#1565C0'},
+  {slug:'wooden_boy',       name:'Wooden Boy',              c1:'#039BE5',c2:'#FDD835',c3:'#795548'},
+  {slug:'lost_boy',         name:'Lost Boy',                c1:'#388E3C',c2:'#FFFFFF',c3:'#FDD835'},
+  {slug:'glowing_fairy',    name:'Glowing Fairy',           c1:'#7CB342',c2:'#FFEE58',c3:'#FFFFFF'},
+  {slug:'mad_hatter',       name:'Mad Tea Party Hatter',    c1:'#6A0572',c2:'#FF6F00',c3:'#4CAF50'},
+  {slug:'cheshire_grin',    name:'Cheshire Grin',           c1:'#AD1457',c2:'#CE93D8',c3:'#FFFFFF'},
   // ── Modern Icons ──
-  {slug:'fuzzy_red',         name:'Fuzzy Red Friend',         c:'#D32F2F'},  // Elmo
-  {slug:'sea_sponge',        name:'Square Sea Sponge',        c:'#FBC02D'},  // SpongeBob
-  {slug:'electric_critter',  name:'Electric Yellow Critter',  c:'#FFEE58'},  // Pikachu
-  {slug:'mystery_dog',       name:'Mystery Dog',              c:'#6D4C41'},  // Scooby
-  {slug:'swamp_ogre',        name:'Swamp Ogre',               c:'#4CAF50'},  // Shrek
-  {slug:'blue_hedgehog',     name:'Mighty Blue Hedgehog',     c:'#0D47A1'},  // Sonic
+  {slug:'fuzzy_red',        name:'Fuzzy Red Friend',        c1:'#D32F2F',c2:'#FF8A65',c3:'#FFFFFF'},
+  {slug:'sea_sponge',       name:'Square Sea Sponge',       c1:'#FBC02D',c2:'#FFFFFF',c3:'#0277BD'},
+  {slug:'electric_critter', name:'Electric Yellow Critter', c1:'#FFEE58',c2:'#FF6F00',c3:'#EF5350'},
+  {slug:'mystery_dog',      name:'Mystery Dog',             c1:'#6D4C41',c2:'#A5D6A7',c3:'#FDD835'},
+  {slug:'swamp_ogre',       name:'Swamp Ogre',              c1:'#4CAF50',c2:'#8BC34A',c3:'#A5D6A7'},
+  {slug:'blue_hedgehog',    name:'Mighty Blue Hedgehog',    c1:'#0D47A1',c2:'#1976D2',c3:'#EF5350'},
 ];
 
 const CHARACTER_FRAME_ITEMS = CHARACTER_TEAMS.map(t => ({
-  id:          `frame_char_${t.slug}_solid`,
+  id:          `frame_char_${t.slug}_gradient`,
   name:         t.name,
-  description: 'Characters · Solid color ring',
+  description: 'Characters · Gradient color ring',
   price:        100,
   category:    'frame',
   league:      'Characters',
   teamSlug:     t.slug,
-  style:       'solid',
-  colors:      [t.c, t.c, t.c],
+  style:       'gradient',
+  colors:      [t.c1, t.c2, t.c3],
 }));
 
 const HALO_ITEMS = [
-  { id: 'halo_static',   name: 'Static Halo',   description: 'Badge text floats in a full circle around your avatar', price: 150, category: 'halo_style' },
-  { id: 'halo_spinning', name: 'Spinning Halo', description: 'Badge text slowly rotates around your avatar',          price: 250, category: 'halo_style' },
+  { id: 'halo_spinning', name: 'Spinning Halo', description: 'Badge text slowly rotates around your avatar', price: 250, category: 'halo_style' },
 ];
 
 const EFFECT_ITEMS = [
@@ -1195,7 +1209,7 @@ fastify.get('/coins', async (request, reply) => {
       selected_effect: row.selected_effect ?? 'happy_burst',
       selected_frame: row.selected_frame ?? null,
       selected_badge: row.selected_badge ?? null,
-      badge_style: row.badge_style ?? 'chip',
+      badge_style: row.badge_style ?? 'halo_static',
     };
   } catch (err) {
     fastify.log.error(err);
@@ -1227,7 +1241,7 @@ fastify.get('/shop/items', async (request, reply) => {
     const selectedEffect = u.selected_effect ?? 'happy_burst';
     const selectedFrame  = u.selected_frame  ?? null;
     const selectedBadge  = u.selected_badge  ?? null;
-    const badgeStyle     = u.badge_style     ?? 'chip';
+    const badgeStyle     = u.badge_style     ?? 'halo_static';
 
     const items = SHOP_ITEMS.map(item => {
       let equipped = false;
@@ -1301,7 +1315,7 @@ fastify.get('/shop/my-unlocks', async (request, reply) => {
       selected_effect: u.selected_effect ?? 'happy_burst',
       selected_frame:  u.selected_frame  ?? null,
       selected_badge:  u.selected_badge  ?? null,
-      badge_style:     u.badge_style     ?? 'chip',
+      badge_style:     u.badge_style     ?? 'halo_static',
     };
   } catch (err) {
     fastify.log.error(err);
@@ -1352,12 +1366,12 @@ fastify.put('/shop/select-badge', async (request, reply) => {
 fastify.put('/shop/select-badge-style', async (request, reply) => {
   try { await request.jwtVerify(); } catch { return reply.status(401).send({ error: 'Unauthorized' }); }
   const { style } = request.body;
-  if (!['chip', 'halo_static', 'halo_spinning'].includes(style)) {
+  if (!['halo_static', 'halo_spinning'].includes(style)) {
     return reply.status(400).send({ error: 'Invalid style' });
   }
   try {
-    // halo_static / halo_spinning must be owned
-    if (style !== 'chip') {
+    // halo_spinning must be owned; halo_static is free/default
+    if (style === 'halo_spinning') {
       const owned = await pool.query('SELECT id FROM user_unlocks WHERE user_id = $1 AND item_id = $2', [request.user.id, style]);
       if (owned.rows.length === 0) return reply.status(403).send({ error: 'Not owned' });
     }
@@ -1945,6 +1959,14 @@ const initDB = async () => {
       UNIQUE(user_id, item_id)
     );
   `);
+  // Migrate: chip badge_style → halo_static (chip is removed)
+  await pool.query(`UPDATE users SET badge_style = 'halo_static' WHERE badge_style = 'chip' OR badge_style IS NULL;`);
+  // Migrate: old solid character frame IDs → new gradient IDs in user_unlocks
+  await pool.query(`UPDATE user_unlocks SET item_id = REPLACE(item_id, '_solid', '_gradient') WHERE item_id LIKE 'frame_char_%_solid';`);
+  // Migrate: old solid character frame ID in users.selected_frame
+  await pool.query(`UPDATE users SET selected_frame = REPLACE(selected_frame, '_solid', '_gradient') WHERE selected_frame LIKE 'frame_char_%_solid';`);
+  // Migrate: old college solid frame IDs out of selected_frame (replace with nick version)
+  await pool.query(`UPDATE users SET selected_frame = NULL WHERE selected_frame LIKE 'frame_college_%_solid';`);
   console.log('Database ready');
 };
 
